@@ -20,6 +20,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
   List<Payment> _payments = [];
   bool _loading = true;
   late int _year;
+  double _yearStartDue = 0;
 
   static const _monthShort = [
     'Jan',
@@ -56,9 +57,15 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
       widget.subscriberId,
       year: _year,
     );
+    final yearStartDue = await _db.getYearStartBalance(
+      widget.subscriberId,
+      _year,
+    );
+    if (!mounted) return;
     setState(() {
       _subscriber = sub;
       _payments = payments;
+      _yearStartDue = yearStartDue;
       _loading = false;
     });
   }
@@ -243,6 +250,11 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
   }
 
   Widget _buildYearSelector() {
+    final sub = _subscriber;
+    final canGoBack =
+        sub == null || sub.startYear == null || _year > sub.startYear!;
+    final canGoForward = _year < DateTime.now().year + 1;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -250,10 +262,12 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
         children: [
           IconButton(
             icon: Icon(PhosphorIcons.caretLeft(PhosphorIconsStyle.bold)),
-            onPressed: () {
-              setState(() => _year--);
-              _loadData();
-            },
+            onPressed: canGoBack
+                ? () {
+                    setState(() => _year--);
+                    _loadData();
+                  }
+                : null,
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -272,10 +286,12 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
           ),
           IconButton(
             icon: Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold)),
-            onPressed: () {
-              setState(() => _year++);
-              _loadData();
-            },
+            onPressed: canGoForward
+                ? () {
+                    setState(() => _year++);
+                    _loadData();
+                  }
+                : null,
           ),
         ],
       ),
@@ -284,7 +300,32 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
 
   Widget _buildPaymentGrid(Subscriber sub) {
     final paymentMap = {for (final p in _payments) p.month: p};
-    double runningDue = sub.previousDue;
+
+    // Determine first month to display for this year
+    final isStartYear = sub.startYear != null && _year == sub.startYear;
+    final firstMonth =
+        (isStartYear && sub.startMonth != null) ? sub.startMonth! : 1;
+    final monthCount = 12 - firstMonth + 1;
+
+    // If viewing a year before the subscription start, show nothing
+    if (sub.startYear != null && _year < sub.startYear!) {
+      return Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Text(
+            'Subscription started ${_monthShort[(sub.startMonth ?? 1) - 1]} ${sub.startYear}',
+            style: TextStyle(color: Colors.grey.shade500),
+          ),
+        ),
+      );
+    }
+
+    double runningDue = _yearStartDue;
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -343,8 +384,8 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
             ),
           ),
           const Divider(height: 1),
-          ...List.generate(12, (i) {
-            final month = i + 1;
+          ...List.generate(monthCount, (i) {
+            final month = firstMonth + i;
             final payment = paymentMap[month];
             final paid = payment?.amountPaid ?? 0;
             final adj = payment?.adjustment ?? 0;
@@ -376,7 +417,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
                   border: Border(
                     bottom: BorderSide(
                       color: Colors.grey.shade200,
-                      width: i < 11 ? 1 : 0,
+                      width: i < monthCount - 1 ? 1 : 0,
                     ),
                   ),
                 ),
@@ -397,7 +438,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
                               ),
                             ),
                           Text(
-                            _monthShort[i],
+                            _monthShort[month - 1],
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: isCurrentMonth

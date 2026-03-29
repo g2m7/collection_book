@@ -12,6 +12,10 @@ class Subscriber {
   /// 'tv' | 'fiber' | 'both'
   final String serviceType;
 
+  /// The year/month when this subscription started (grid shows from here).
+  final int? startYear;
+  final int? startMonth;
+
   // Transient fields (not stored, computed in queries)
   final String? areaName;
   final double? currentDue;
@@ -27,6 +31,8 @@ class Subscriber {
     this.isActive = true,
     this.createdAt,
     this.serviceType = 'tv',
+    this.startYear,
+    this.startMonth,
     this.areaName,
     this.currentDue,
   });
@@ -42,6 +48,8 @@ class Subscriber {
     'is_active': isActive ? 1 : 0,
     'service_type': serviceType,
     if (createdAt != null) 'created_at': createdAt,
+    'start_year': startYear,
+    'start_month': startMonth,
   };
 
   factory Subscriber.fromMap(Map<String, dynamic> map) => Subscriber(
@@ -55,6 +63,8 @@ class Subscriber {
     isActive: (map['is_active'] as int?) == 1,
     createdAt: map['created_at'] as String?,
     serviceType: (map['service_type'] as String?) ?? 'tv',
+    startYear: map['start_year'] as int?,
+    startMonth: map['start_month'] as int?,
     areaName: map['area_name'] as String?,
     currentDue: (map['current_due'] as num?)?.toDouble(),
   );
@@ -70,6 +80,8 @@ class Subscriber {
     bool? isActive,
     String? createdAt,
     String? serviceType,
+    int? startYear,
+    int? startMonth,
     String? areaName,
     double? currentDue,
   }) => Subscriber(
@@ -83,6 +95,8 @@ class Subscriber {
     isActive: isActive ?? this.isActive,
     createdAt: createdAt ?? this.createdAt,
     serviceType: serviceType ?? this.serviceType,
+    startYear: startYear ?? this.startYear,
+    startMonth: startMonth ?? this.startMonth,
     areaName: areaName ?? this.areaName,
     currentDue: currentDue ?? this.currentDue,
   );

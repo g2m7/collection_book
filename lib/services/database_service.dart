@@ -23,7 +23,7 @@ class DatabaseService {
     final path = p.join(dbPath, 'rent_ledger.db');
     return openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -59,6 +59,10 @@ class DatabaseService {
         "ALTER TABLE subscribers ADD COLUMN service_type TEXT NOT NULL DEFAULT 'tv'",
       );
     }
+    if (oldVersion < 4) {
+      await db.execute('ALTER TABLE subscribers ADD COLUMN start_year INTEGER');
+      await db.execute('ALTER TABLE subscribers ADD COLUMN start_month INTEGER');
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -80,6 +84,8 @@ class DatabaseService {
         previous_due REAL NOT NULL DEFAULT 0,
         is_active INTEGER NOT NULL DEFAULT 1,
         service_type TEXT NOT NULL DEFAULT 'tv',
+        start_year INTEGER,
+        start_month INTEGER,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         FOREIGN KEY (area_id) REFERENCES areas(id)
       )
@@ -286,6 +292,39 @@ class DatabaseService {
   }
 
   // --------------- DUE CALCULATION ---------------
+
+  /// Returns the running balance at the START of [year] for [subscriberId].
+  /// For the start year (or when startYear is unset), returns [previousDue].
+  Future<double> getYearStartBalance(int subscriberId, int year) async {
+    final sub = await getSubscriber(subscriberId);
+    if (sub == null) return 0;
+
+    final startYear = sub.startYear;
+    final startMonth = sub.startMonth ?? 1;
+
+    if (startYear == null || year <= startYear) return sub.previousDue;
+
+    // Months charged: from (startYear, startMonth) through end of (year - 1)
+    final monthsCharged =
+        (year - 1 - startYear) * 12 + (12 - startMonth + 1);
+
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT
+        COALESCE(SUM(amount_paid), 0) AS total_paid,
+        COALESCE(SUM(adjustment),  0) AS total_adj
+      FROM payments
+      WHERE subscriber_id = ? AND year < ?
+    ''', [subscriberId, year]);
+
+    final totalPaid = (result.first['total_paid'] as num).toDouble();
+    final totalAdj = (result.first['total_adj'] as num).toDouble();
+
+    return sub.previousDue +
+        monthsCharged * sub.monthlyRent +
+        totalAdj -
+        totalPaid;
+  }
 
   Future<double> calculateDue(
       int subscriberId, int year, int month) async {
