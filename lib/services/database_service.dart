@@ -440,9 +440,20 @@ class DatabaseService {
         ? "AND (s.service_type = '$serviceType' OR s.service_type = 'both')"
         : '';
 
+    const startedByMonthFilter = '''
+      AND (
+        CAST(strftime('%Y', s.created_at) AS INTEGER) < ?
+        OR (
+          CAST(strftime('%Y', s.created_at) AS INTEGER) = ?
+          AND CAST(strftime('%m', s.created_at) AS INTEGER) <= ?
+        )
+      )
+    ''';
+
     final subscriberCount = Sqflite.firstIntValue(
       await db.rawQuery(
-        'SELECT COUNT(*) FROM subscribers s WHERE s.is_active = 1 $serviceFilter',
+        'SELECT COUNT(*) FROM subscribers s WHERE s.is_active = 1 $serviceFilter $startedByMonthFilter',
+        [year, year, month],
       ),
     );
 
@@ -454,27 +465,35 @@ class DatabaseService {
         COALESCE(SUM(p.adjustment), 0) as total_adjustment
       FROM payments p
       JOIN subscribers s ON p.subscriber_id = s.id
-      WHERE p.year = ? AND p.month = ? AND s.is_active = 1 $serviceFilter
+      WHERE p.year = ? AND p.month = ?
+        AND s.is_active = 1
+        $serviceFilter
+        $startedByMonthFilter
     ''',
-      [year, month],
+      [year, month, year, year, month],
     );
+
+    final totalAdjustment =
+        (paymentData.first['total_adjustment'] as num?)?.toDouble() ?? 0;
 
     final totalExpected = Sqflite.firstIntValue(
       await db.rawQuery(
-        'SELECT COALESCE(SUM(s.monthly_rent), 0) FROM subscribers s WHERE s.is_active = 1 $serviceFilter',
+        'SELECT COALESCE(SUM(s.monthly_rent), 0) FROM subscribers s WHERE s.is_active = 1 $serviceFilter $startedByMonthFilter',
+        [year, year, month],
       ),
     );
 
     final paidCount = (paymentData.first['paid_count'] as num?)?.toInt() ?? 0;
     final totalCollected =
         (paymentData.first['total_collected'] as num?)?.toDouble() ?? 0;
+    final netExpected = (totalExpected ?? 0).toDouble() + totalAdjustment;
 
     return {
       'subscriber_count': subscriberCount ?? 0,
       'paid_count': paidCount,
       'unpaid_count': (subscriberCount ?? 0) - paidCount,
       'total_collected': totalCollected,
-      'total_expected': (totalExpected ?? 0).toDouble(),
+      'total_expected': netExpected,
       'collection_rate': (subscriberCount ?? 0) > 0
           ? (paidCount / (subscriberCount ?? 1) * 100)
           : 0.0,
