@@ -251,8 +251,9 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
 
   Widget _buildYearSelector() {
     final sub = _subscriber;
-    final canGoBack =
-        sub == null || sub.startYear == null || _year > sub.startYear!;
+    final created = _parseCreatedAt(sub?.createdAt);
+    final firstYear = created?.year;
+    final canGoBack = firstYear == null || _year > firstYear;
     final canGoForward = _year < DateTime.now().year + 1;
 
     return Padding(
@@ -300,15 +301,15 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
 
   Widget _buildPaymentGrid(Subscriber sub) {
     final paymentMap = {for (final p in _payments) p.month: p};
+    final created = _parseCreatedAt(sub.createdAt);
 
-    // Determine first month to display for this year
-    final isStartYear = sub.startYear != null && _year == sub.startYear;
-    final firstMonth =
-        (isStartYear && sub.startMonth != null) ? sub.startMonth! : 1;
+    // Determine first month to display from subscriber creation date.
+    final isCreationYear = created != null && _year == created.year;
+    final firstMonth = isCreationYear ? created.month : 1;
     final monthCount = 12 - firstMonth + 1;
 
-    // If viewing a year before the subscription start, show nothing
-    if (sub.startYear != null && _year < sub.startYear!) {
+    // If viewing a year before subscriber creation, show nothing.
+    if (created != null && _year < created.year) {
       return Container(
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.all(32),
@@ -318,7 +319,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
         ),
         child: Center(
           child: Text(
-            'Subscription started ${_monthShort[(sub.startMonth ?? 1) - 1]} ${sub.startYear}',
+            'Subscriber added ${_monthShort[created.month - 1]} ${created.year}',
             style: TextStyle(color: Colors.grey.shade500),
           ),
         ),
@@ -525,5 +526,11 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
       await _db.deleteSubscriber(sub.id!);
       if (mounted) Navigator.pop(context);
     }
+  }
+
+  DateTime? _parseCreatedAt(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    return DateTime.tryParse(value) ??
+        DateTime.tryParse(value.replaceFirst(' ', 'T'));
   }
 }

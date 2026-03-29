@@ -24,19 +24,12 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
   final _rentController = TextEditingController();
   final _prevDueController = TextEditingController(text: '0');
 
-  static const _monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
-  ];
-
   List<Area> _areas = [];
   int? _selectedAreaId;
   bool _isActive = true;
   bool _loading = true;
   bool _saving = false;
   Subscriber? _existing;
-  late int _startMonth;
-  late int _startYear;
 
   /// 'tv' | 'fiber' | 'both'
   late String _serviceType;
@@ -47,14 +40,10 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
   void initState() {
     super.initState();
     _serviceType = AppModeService().mode.key;
-    final now = DateTime.now();
-    _startMonth = now.month;
-    _startYear = now.year;
     _loadData();
   }
 
   Future<void> _loadData() async {
-    final now = DateTime.now();
     final areas = await _db.getAreas();
     Subscriber? existing;
     if (_isEditing) {
@@ -68,8 +57,6 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
         _selectedAreaId = existing.areaId;
         _isActive = existing.isActive;
         _serviceType = existing.serviceType;
-        _startMonth = existing.startMonth ?? now.month;
-        _startYear = existing.startYear ?? now.year;
       }
     }
     setState(() {
@@ -98,8 +85,6 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
       previousDue: double.tryParse(_prevDueController.text) ?? 0,
       isActive: _isActive,
       serviceType: _serviceType,
-      startYear: _startYear,
-      startMonth: _startMonth,
     );
 
     if (_isEditing) {
@@ -237,40 +222,6 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                   ),
 
                   const SizedBox(height: 16),
-                  _label('Subscription Start'),
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: DropdownButtonFormField<int>(
-                          initialValue: _startMonth,
-                          decoration: const InputDecoration(),
-                          items: List.generate(12, (i) => DropdownMenuItem(
-                            value: i + 1,
-                            child: Text(_monthNames[i]),
-                          )),
-                          onChanged: (v) => setState(() => _startMonth = v!),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: DropdownButtonFormField<int>(
-                          initialValue: _startYear,
-                          decoration: const InputDecoration(),
-                          items: List.generate(5, (i) {
-                            final y = DateTime.now().year - 2 + i;
-                            return DropdownMenuItem(
-                              value: y,
-                              child: Text('$y'),
-                            );
-                          }),
-                          onChanged: (v) => setState(() => _startYear = v!),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -342,7 +293,13 @@ class _ServiceSelector extends StatelessWidget {
 
     return Row(
       children: [
-        _btn(context, 'tv', PhosphorIcons.televisionSimple(PhosphorIconsStyle.bold), 'TV', primary),
+        _btn(
+          context,
+          'tv',
+          PhosphorIcons.televisionSimple(PhosphorIconsStyle.bold),
+          'TV',
+          primary,
+        ),
         const SizedBox(width: 8),
         _btn(
           context,
@@ -352,7 +309,13 @@ class _ServiceSelector extends StatelessWidget {
           primary,
         ),
         const SizedBox(width: 8),
-        _btn(context, 'both', PhosphorIcons.infinity(PhosphorIconsStyle.bold), 'Both', Colors.purple),
+        _btn(
+          context,
+          'both',
+          PhosphorIcons.infinity(PhosphorIconsStyle.bold),
+          'Both',
+          Colors.purple,
+        ),
       ],
     );
   }

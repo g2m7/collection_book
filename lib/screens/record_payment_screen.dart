@@ -33,6 +33,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
   bool _loading = true;
   bool _saving = false;
   Payment? _existingPayment;
+  double _dueBeforePayment = 0;
 
   static const _monthNames = [
     'January',
@@ -63,9 +64,13 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
     super.didChangeDependencies();
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final currentYear = DateTime.now().year;
     if (args != null) {
       if (args.containsKey('month')) _month = args['month'] as int;
-      if (args.containsKey('year')) _year = args['year'] as int;
+      if (args.containsKey('year')) {
+        final requestedYear = args['year'] as int;
+        _year = requestedYear < currentYear ? currentYear : requestedYear;
+      }
     }
   }
 
@@ -91,8 +96,22 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
       _year,
       _month,
     );
+
+    final dueAtMonthEnd = await _db.calculateDue(
+      _selectedSubscriber!.id!,
+      _year,
+      _month,
+    );
+
+    final dueBeforePayment = payment == null
+        ? dueAtMonthEnd
+        : dueAtMonthEnd + payment.amountPaid - payment.adjustment;
+
+    if (!mounted) return;
+
     setState(() {
       _existingPayment = payment;
+      _dueBeforePayment = dueBeforePayment;
       if (payment != null) {
         _amountController.text = payment.amountPaid.toStringAsFixed(0);
         _adjustmentController.text = payment.adjustment != 0
@@ -106,6 +125,105 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
         _noteController.clear();
       }
     });
+  }
+
+  void _setAmountToClearDue() {
+    final adj = double.tryParse(_adjustmentController.text) ?? 0;
+    final amount = (_dueBeforePayment + adj).clamp(0, double.infinity);
+    setState(() {
+      _amountController.text = amount.toStringAsFixed(0);
+    });
+  }
+
+  Future<void> _openClearDueHelper() async {
+    final adj = double.tryParse(_adjustmentController.text) ?? 0;
+    final amount = (_dueBeforePayment + adj).clamp(0, double.infinity);
+
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Clear Due Helper',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Current due: ₹${_dueBeforePayment.toStringAsFixed(0)}',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                ),
+                Text(
+                  'Adjustment: ₹${adj.toStringAsFixed(0)}',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Suggested amount to make due 0: ₹${amount.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => Navigator.pop(context, 'apply'),
+                    icon: Icon(
+                      PhosphorIcons.checkCircle(PhosphorIconsStyle.bold),
+                      size: 16,
+                    ),
+                    label: const Text('Set This Amount'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.pop(context, 'apply_note'),
+                    icon: Icon(
+                      PhosphorIcons.notePencil(PhosphorIconsStyle.bold),
+                      size: 16,
+                    ),
+                    label: const Text('Set Amount + Add Note'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted || action == null) return;
+
+    _setAmountToClearDue();
+
+    if (action == 'apply_note' && _noteController.text.trim().isEmpty) {
+      _noteController.text = 'Auto-set amount to clear due';
+    }
+
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Amount set to ₹${amount.toStringAsFixed(0)} to clear due.',
+        ),
+      ),
+    );
+  }
+
+  double _projectedDueAfterSave() {
+    final amount = double.tryParse(_amountController.text) ?? 0;
+    final adjustment = double.tryParse(_adjustmentController.text) ?? 0;
+    return _dueBeforePayment + adjustment - amount;
   }
 
   Future<void> _save() async {
@@ -213,6 +331,14 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                         color: Colors.grey.shade600,
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Current due till ${_monthNames[_month - 1]} $_year: ₹${_dueBeforePayment.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
                   ],
 
                   const SizedBox(height: 20),
@@ -251,8 +377,8 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                         child: DropdownButtonFormField<int>(
                           initialValue: _year,
                           decoration: const InputDecoration(),
-                          items: List.generate(5, (i) {
-                            final y = DateTime.now().year - 2 + i;
+                          items: List.generate(2, (i) {
+                            final y = DateTime.now().year + i;
                             return DropdownMenuItem(
                               value: y,
                               child: Text('$y'),
@@ -296,19 +422,38 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                       if (double.tryParse(v) == null) return 'Invalid amount';
                       return null;
                     },
+                    onChanged: (_) => setState(() {}),
                     autofocus: widget.subscriberId != null,
+                  ),
+
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      onPressed: _openClearDueHelper,
+                      icon: Icon(
+                        PhosphorIcons.magicWand(PhosphorIconsStyle.bold),
+                        size: 16,
+                      ),
+                      label: const Text('Clear Due Helper'),
+                    ),
                   ),
 
                   const SizedBox(height: 20),
 
                   // Adjustment
                   Text(
-                    'Adjustment (optional)',
+                    'Adjustments (optional)',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: Colors.grey.shade700,
                     ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Use positive to add due (charge/previous due), negative to reduce due (discount).',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
@@ -321,9 +466,66 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                     ],
                     decoration: const InputDecoration(
                       prefixText: '₹ ',
-                      hintText:
-                          '0 (positive = extra charge, negative = discount)…',
+                      hintText: 'e.g. 1000 or -200',
                     ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Text(
+                      'Examples: +1000 (carry forward old due), +250 (one-time charge), -200 (discount/waiver).',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+                  Builder(
+                    builder: (context) {
+                      final projected = _projectedDueAfterSave();
+                      final isAdvance = projected < 0;
+                      final amount = projected.abs().toStringAsFixed(0);
+                      final color = isAdvance
+                          ? const Color(0xFF2E7D32)
+                          : projected > 0
+                          ? const Color(0xFFC62828)
+                          : const Color(0xFF1565C0);
+                      final text = projected == 0
+                          ? 'After save: due becomes 0 (fully clear).'
+                          : isAdvance
+                          ? 'After save: advance will be ₹$amount.'
+                          : 'After save: remaining due will be ₹$amount.';
+                      return Row(
+                        children: [
+                          Icon(
+                            PhosphorIcons.info(PhosphorIconsStyle.bold),
+                            size: 16,
+                            color: color,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              text,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: color,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 16),
@@ -382,7 +584,10 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                           Navigator.pop(context);
                         }
                       },
-                      icon: Icon(PhosphorIcons.trash(PhosphorIconsStyle.bold), size: 18),
+                      icon: Icon(
+                        PhosphorIcons.trash(PhosphorIconsStyle.bold),
+                        size: 18,
+                      ),
                       label: const Text('Delete this payment'),
                       style: TextButton.styleFrom(
                         foregroundColor: const Color(0xFFC62828),

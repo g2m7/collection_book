@@ -51,7 +51,9 @@ class DatabaseService {
         SELECT id, area_id, name, alias_name, vc_number, monthly_rent, previous_due, is_active, created_at FROM subscribers_old
       ''');
       await db.execute('DROP TABLE subscribers_old');
-      await db.execute('CREATE INDEX idx_subscribers_area ON subscribers(area_id)');
+      await db.execute(
+        'CREATE INDEX idx_subscribers_area ON subscribers(area_id)',
+      );
     }
     if (oldVersion < 3) {
       // Add service_type column; existing subscribers default to 'tv'
@@ -61,7 +63,9 @@ class DatabaseService {
     }
     if (oldVersion < 4) {
       await db.execute('ALTER TABLE subscribers ADD COLUMN start_year INTEGER');
-      await db.execute('ALTER TABLE subscribers ADD COLUMN start_month INTEGER');
+      await db.execute(
+        'ALTER TABLE subscribers ADD COLUMN start_month INTEGER',
+      );
     }
   }
 
@@ -107,17 +111,22 @@ class DatabaseService {
     ''');
 
     await db.execute(
-        'CREATE INDEX idx_payments_subscriber ON payments(subscriber_id, year, month)');
+      'CREATE INDEX idx_payments_subscriber ON payments(subscriber_id, year, month)',
+    );
     await db.execute(
-        'CREATE INDEX idx_subscribers_area ON subscribers(area_id)');
+      'CREATE INDEX idx_subscribers_area ON subscribers(area_id)',
+    );
   }
 
   // --------------- AREAS ---------------
 
   Future<int> insertArea(Area area) async {
     final db = await database;
-    return db.insert('areas', area.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.ignore);
+    return db.insert(
+      'areas',
+      area.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
   }
 
   Future<List<Area>> getAreas() async {
@@ -128,8 +137,12 @@ class DatabaseService {
 
   Future<void> updateArea(Area area) async {
     final db = await database;
-    await db
-        .update('areas', area.toMap(), where: 'id = ?', whereArgs: [area.id]);
+    await db.update(
+      'areas',
+      area.toMap(),
+      where: 'id = ?',
+      whereArgs: [area.id],
+    );
   }
 
   Future<void> deleteArea(int id) async {
@@ -146,8 +159,12 @@ class DatabaseService {
 
   Future<void> updateSubscriber(Subscriber subscriber) async {
     final db = await database;
-    await db.update('subscribers', subscriber.toMap(),
-        where: 'id = ?', whereArgs: [subscriber.id]);
+    await db.update(
+      'subscribers',
+      subscriber.toMap(),
+      where: 'id = ?',
+      whereArgs: [subscriber.id],
+    );
   }
 
   Future<void> deleteSubscriber(int id) async {
@@ -158,12 +175,15 @@ class DatabaseService {
 
   Future<Subscriber?> getSubscriber(int id) async {
     final db = await database;
-    final maps = await db.rawQuery('''
+    final maps = await db.rawQuery(
+      '''
       SELECT s.*, a.name as area_name
       FROM subscribers s
       LEFT JOIN areas a ON s.area_id = a.id
       WHERE s.id = ?
-    ''', [id]);
+    ''',
+      [id],
+    );
     if (maps.isEmpty) return null;
     return Subscriber.fromMap(maps.first);
   }
@@ -191,8 +211,7 @@ class DatabaseService {
       args.add(isActive ? 1 : 0);
     }
     if (search != null && search.isNotEmpty) {
-      where.add(
-          '(s.name LIKE ? OR s.alias_name LIKE ? OR s.vc_number LIKE ?)');
+      where.add('(s.name LIKE ? OR s.alias_name LIKE ? OR s.vc_number LIKE ?)');
       args.addAll(['%$search%', '%$search%', '%$search%']);
     }
     if (serviceType != null) {
@@ -200,43 +219,72 @@ class DatabaseService {
       args.add(serviceType);
     }
 
-    final whereClause =
-        where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}';
+    final whereClause = where.isEmpty ? '' : 'WHERE ${where.join(' AND ')}';
 
     final y = year ?? DateTime.now().year;
     final m = month ?? DateTime.now().month;
 
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT s.*, a.name as area_name,
         (
           s.previous_due
-          + ? * s.monthly_rent
+          + (
+              CASE
+                WHEN ((? - CAST(strftime('%Y', s.created_at) AS INTEGER)) * 12
+                  + (? - CAST(strftime('%m', s.created_at) AS INTEGER)) + 1) > 0
+                THEN ((? - CAST(strftime('%Y', s.created_at) AS INTEGER)) * 12
+                  + (? - CAST(strftime('%m', s.created_at) AS INTEGER)) + 1)
+                ELSE 0
+              END
+            ) * s.monthly_rent
           + COALESCE((
               SELECT SUM(p2.adjustment) FROM payments p2
-              WHERE p2.subscriber_id = s.id AND p2.year = ? AND p2.month <= ?
+              WHERE p2.subscriber_id = s.id
+                AND (
+                  p2.year > CAST(strftime('%Y', s.created_at) AS INTEGER)
+                  OR (
+                    p2.year = CAST(strftime('%Y', s.created_at) AS INTEGER)
+                    AND p2.month >= CAST(strftime('%m', s.created_at) AS INTEGER)
+                  )
+                )
+                AND (
+                  p2.year < ?
+                  OR (p2.year = ? AND p2.month <= ?)
+                )
             ), 0)
           - COALESCE((
               SELECT SUM(p3.amount_paid) FROM payments p3
-              WHERE p3.subscriber_id = s.id AND p3.year = ? AND p3.month <= ?
+              WHERE p3.subscriber_id = s.id
+                AND (
+                  p3.year > CAST(strftime('%Y', s.created_at) AS INTEGER)
+                  OR (
+                    p3.year = CAST(strftime('%Y', s.created_at) AS INTEGER)
+                    AND p3.month >= CAST(strftime('%m', s.created_at) AS INTEGER)
+                  )
+                )
+                AND (
+                  p3.year < ?
+                  OR (p3.year = ? AND p3.month <= ?)
+                )
             ), 0)
         ) as current_due
       FROM subscribers s
       LEFT JOIN areas a ON s.area_id = a.id
       $whereClause
       ORDER BY a.name, s.name
-    ''', [m, y, m, y, m, ...args]);
+    ''',
+      [y, m, y, m, y, y, m, y, y, m, ...args],
+    );
 
     var subscribers = rows.map((r) => Subscriber.fromMap(r)).toList();
 
     if (filter == 'paid') {
-      subscribers =
-          subscribers.where((s) => (s.currentDue ?? 0) <= 0).toList();
+      subscribers = subscribers.where((s) => (s.currentDue ?? 0) <= 0).toList();
     } else if (filter == 'unpaid') {
-      subscribers =
-          subscribers.where((s) => (s.currentDue ?? 0) > 0).toList();
+      subscribers = subscribers.where((s) => (s.currentDue ?? 0) > 0).toList();
     } else if (filter == 'overpaid') {
-      subscribers =
-          subscribers.where((s) => (s.currentDue ?? 0) < 0).toList();
+      subscribers = subscribers.where((s) => (s.currentDue ?? 0) < 0).toList();
     }
 
     return subscribers;
@@ -246,15 +294,21 @@ class DatabaseService {
 
   Future<int> insertOrUpdatePayment(Payment payment) async {
     final db = await database;
-    final existing = await db.query('payments',
-        where: 'subscriber_id = ? AND year = ? AND month = ?',
-        whereArgs: [payment.subscriberId, payment.year, payment.month]);
+    final existing = await db.query(
+      'payments',
+      where: 'subscriber_id = ? AND year = ? AND month = ?',
+      whereArgs: [payment.subscriberId, payment.year, payment.month],
+    );
 
     int result;
     if (existing.isNotEmpty) {
       result = existing.first['id'] as int;
-      await db.update('payments', payment.toMap(),
-          where: 'id = ?', whereArgs: [result]);
+      await db.update(
+        'payments',
+        payment.toMap(),
+        where: 'id = ?',
+        whereArgs: [result],
+      );
     } else {
       result = await db.insert('payments', payment.toMap());
     }
@@ -263,25 +317,31 @@ class DatabaseService {
     return result;
   }
 
-  Future<List<Payment>> getPaymentsForSubscriber(int subscriberId,
-      {int? year}) async {
+  Future<List<Payment>> getPaymentsForSubscriber(
+    int subscriberId, {
+    int? year,
+  }) async {
     final db = await database;
-    final w =
-        'subscriber_id = ?${year != null ? ' AND year = ?' : ''}';
+    final w = 'subscriber_id = ?${year != null ? ' AND year = ?' : ''}';
     final a = <dynamic>[subscriberId];
     if (year != null) a.add(year);
 
-    final maps =
-        await db.query('payments', where: w, whereArgs: a, orderBy: 'year, month');
+    final maps = await db.query(
+      'payments',
+      where: w,
+      whereArgs: a,
+      orderBy: 'year, month',
+    );
     return maps.map((m) => Payment.fromMap(m)).toList();
   }
 
-  Future<Payment?> getPayment(
-      int subscriberId, int year, int month) async {
+  Future<Payment?> getPayment(int subscriberId, int year, int month) async {
     final db = await database;
-    final maps = await db.query('payments',
-        where: 'subscriber_id = ? AND year = ? AND month = ?',
-        whereArgs: [subscriberId, year, month]);
+    final maps = await db.query(
+      'payments',
+      where: 'subscriber_id = ? AND year = ? AND month = ?',
+      whereArgs: [subscriberId, year, month],
+    );
     if (maps.isEmpty) return null;
     return Payment.fromMap(maps.first);
   }
@@ -294,28 +354,35 @@ class DatabaseService {
   // --------------- DUE CALCULATION ---------------
 
   /// Returns the running balance at the START of [year] for [subscriberId].
-  /// For the start year (or when startYear is unset), returns [previousDue].
+  /// Charges begin from the subscriber creation month.
   Future<double> getYearStartBalance(int subscriberId, int year) async {
     final sub = await getSubscriber(subscriberId);
     if (sub == null) return 0;
 
-    final startYear = sub.startYear;
-    final startMonth = sub.startMonth ?? 1;
+    final created = _parseCreatedAt(sub.createdAt);
+    final startYear = created?.year ?? DateTime.now().year;
+    final startMonth = created?.month ?? 1;
 
-    if (startYear == null || year <= startYear) return sub.previousDue;
+    if (year <= startYear) return sub.previousDue;
 
     // Months charged: from (startYear, startMonth) through end of (year - 1)
-    final monthsCharged =
-        (year - 1 - startYear) * 12 + (12 - startMonth + 1);
+    final monthsCharged = (year - 1 - startYear) * 12 + (12 - startMonth + 1);
 
     final db = await database;
-    final result = await db.rawQuery('''
+    final result = await db.rawQuery(
+      '''
       SELECT
         COALESCE(SUM(amount_paid), 0) AS total_paid,
         COALESCE(SUM(adjustment),  0) AS total_adj
       FROM payments
-      WHERE subscriber_id = ? AND year < ?
-    ''', [subscriberId, year]);
+      WHERE subscriber_id = ?
+        AND (
+          year > ? OR (year = ? AND month >= ?)
+        )
+        AND year < ?
+    ''',
+      [subscriberId, startYear, startYear, startMonth, year],
+    );
 
     final totalPaid = (result.first['total_paid'] as num).toDouble();
     final totalAdj = (result.first['total_adj'] as num).toDouble();
@@ -326,20 +393,32 @@ class DatabaseService {
         totalPaid;
   }
 
-  Future<double> calculateDue(
-      int subscriberId, int year, int month) async {
+  Future<double> calculateDue(int subscriberId, int year, int month) async {
     final db = await database;
     final sub = await getSubscriber(subscriberId);
     if (sub == null) return 0;
 
-    final totalRent = sub.monthlyRent * month;
-    final result = await db.rawQuery('''
+    final created = _parseCreatedAt(sub.createdAt);
+    final startYear = created?.year ?? year;
+    final startMonth = created?.month ?? month;
+    final months = _monthsBetweenInclusive(startYear, startMonth, year, month);
+    final totalRent = sub.monthlyRent * months;
+    final result = await db.rawQuery(
+      '''
       SELECT
         COALESCE(SUM(amount_paid), 0) as total_paid,
         COALESCE(SUM(adjustment), 0) as total_adj
       FROM payments
-      WHERE subscriber_id = ? AND year = ? AND month <= ?
-    ''', [subscriberId, year, month]);
+      WHERE subscriber_id = ?
+        AND (
+          year > ? OR (year = ? AND month >= ?)
+        )
+        AND (
+          year < ? OR (year = ? AND month <= ?)
+        )
+    ''',
+      [subscriberId, startYear, startYear, startMonth, year, year, month],
+    );
 
     final totalPaid = (result.first['total_paid'] as num).toDouble();
     final totalAdj = (result.first['total_adj'] as num).toDouble();
@@ -351,17 +430,24 @@ class DatabaseService {
 
   /// [serviceType] — 'tv' or 'fiber' to scope dashboard; null = all.
   Future<Map<String, dynamic>> getDashboardSummary(
-      int year, int month, {String? serviceType}) async {
+    int year,
+    int month, {
+    String? serviceType,
+  }) async {
     final db = await database;
 
     final serviceFilter = serviceType != null
         ? "AND (s.service_type = '$serviceType' OR s.service_type = 'both')"
         : '';
 
-    final subscriberCount = Sqflite.firstIntValue(await db.rawQuery(
-        'SELECT COUNT(*) FROM subscribers s WHERE s.is_active = 1 $serviceFilter'));
+    final subscriberCount = Sqflite.firstIntValue(
+      await db.rawQuery(
+        'SELECT COUNT(*) FROM subscribers s WHERE s.is_active = 1 $serviceFilter',
+      ),
+    );
 
-    final paymentData = await db.rawQuery('''
+    final paymentData = await db.rawQuery(
+      '''
       SELECT
         COUNT(DISTINCT p.subscriber_id) as paid_count,
         COALESCE(SUM(p.amount_paid), 0) as total_collected,
@@ -369,13 +455,17 @@ class DatabaseService {
       FROM payments p
       JOIN subscribers s ON p.subscriber_id = s.id
       WHERE p.year = ? AND p.month = ? AND s.is_active = 1 $serviceFilter
-    ''', [year, month]);
+    ''',
+      [year, month],
+    );
 
-    final totalExpected = Sqflite.firstIntValue(await db.rawQuery(
-        'SELECT COALESCE(SUM(s.monthly_rent), 0) FROM subscribers s WHERE s.is_active = 1 $serviceFilter'));
+    final totalExpected = Sqflite.firstIntValue(
+      await db.rawQuery(
+        'SELECT COALESCE(SUM(s.monthly_rent), 0) FROM subscribers s WHERE s.is_active = 1 $serviceFilter',
+      ),
+    );
 
-    final paidCount =
-        (paymentData.first['paid_count'] as num?)?.toInt() ?? 0;
+    final paidCount = (paymentData.first['paid_count'] as num?)?.toInt() ?? 0;
     final totalCollected =
         (paymentData.first['total_collected'] as num?)?.toDouble() ?? 0;
 
@@ -393,13 +483,17 @@ class DatabaseService {
 
   /// [serviceType] — 'tv' or 'fiber' to scope area summary; null = all.
   Future<List<Map<String, dynamic>>> getAreaSummary(
-      int year, int month, {String? serviceType}) async {
+    int year,
+    int month, {
+    String? serviceType,
+  }) async {
     final db = await database;
     final serviceFilter = serviceType != null
         ? "AND (s.service_type = '$serviceType' OR s.service_type = 'both')"
         : '';
 
-    return db.rawQuery('''
+    return db.rawQuery(
+      '''
       SELECT
         a.id as area_id,
         a.name as area_name,
@@ -423,7 +517,9 @@ class DatabaseService {
       LEFT JOIN subscribers s ON s.area_id = a.id AND s.is_active = 1 $serviceFilter
       GROUP BY a.id
       ORDER BY a.name
-    ''', [year, month, year, month]);
+    ''',
+      [year, month, year, month],
+    );
   }
 
   // --------------- UTILITIES ---------------
@@ -448,5 +544,21 @@ class DatabaseService {
     if (await targetFile.exists()) await targetFile.delete();
     await sourceFile.copy(targetPath);
     _db = await openDatabase(targetPath);
+  }
+
+  DateTime? _parseCreatedAt(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    return DateTime.tryParse(value) ??
+        DateTime.tryParse(value.replaceFirst(' ', 'T'));
+  }
+
+  int _monthsBetweenInclusive(
+    int startYear,
+    int startMonth,
+    int endYear,
+    int endMonth,
+  ) {
+    final count = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+    return count > 0 ? count : 0;
   }
 }
