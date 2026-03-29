@@ -6,6 +6,7 @@ import '../models/area.dart';
 import '../services/database_service.dart';
 import '../services/backup_service.dart';
 import '../services/app_mode_service.dart';
+import '../services/import_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -125,6 +126,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: 'Restore from Backup',
                   subtitle: 'Pick a backup file to restore',
                   onTap: _doRestore,
+                ),
+                _tile(
+                  icon: PhosphorIcons.fileXls(PhosphorIconsStyle.bold),
+                  title: 'Import Subscribers',
+                  subtitle: 'Import from Book1 xlsx or operator XLS report',
+                  onTap: _importSubscribers,
                 ),
                 const Divider(height: 1),
 
@@ -338,6 +345,152 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     }
+  }
+
+  Future<void> _importSubscribers() async {
+    final picked = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['xlsx', 'xls'],
+    );
+    if (picked == null || picked.files.single.path == null) return;
+    final path = picked.files.single.path!;
+
+    if (!mounted) return;
+
+    // Show loading while parsing
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('Reading file…'),
+          ],
+        ),
+      ),
+    );
+
+    ImportPreview preview;
+    try {
+      preview = await ImportService().preview(path);
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to read file: $e'),
+            backgroundColor: const Color(0xFFC62828),
+          ),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    Navigator.pop(context); // close loading dialog
+
+    if (preview.format == ImportFormat.unknown ||
+        preview.subscriberCount == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unrecognised file format or no data found.'),
+          backgroundColor: Color(0xFFC62828),
+        ),
+      );
+      return;
+    }
+
+    // Preview dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Import Subscribers'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Format: ${preview.formatLabel}'),
+            const SizedBox(height: 8),
+            _previewRow('Subscribers', '${preview.subscriberCount}'),
+            if (preview.paymentCount > 0)
+              _previewRow('Payment records', '${preview.paymentCount}'),
+            const SizedBox(height: 12),
+            const Text(
+              'Existing subscribers matched by VC number will be updated. New ones will be added.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Import'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    // Run import
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('Importing…'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final result = await ImportService().commit(preview);
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Done — ${result.inserted} added, ${result.updated} updated'
+            '${result.payments > 0 ? ', ${result.payments} payments' : ''}.',
+          ),
+          backgroundColor: const Color(0xFF2E7D32),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      _loadData();
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Import failed: $e'),
+          backgroundColor: const Color(0xFFC62828),
+        ),
+      );
+    }
+  }
+
+  Widget _previewRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Text('$label: ',
+              style: const TextStyle(fontWeight: FontWeight.w600)),
+          Text(value),
+        ],
+      ),
+    );
   }
 
   Future<void> _addArea() async {
