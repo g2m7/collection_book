@@ -108,7 +108,9 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Search by name, alias, or VC number…',
-                prefixIcon: Icon(PhosphorIcons.magnifyingGlass(PhosphorIconsStyle.bold)),
+                prefixIcon: Icon(
+                  PhosphorIcons.magnifyingGlass(PhosphorIconsStyle.bold),
+                ),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
                         icon: Icon(PhosphorIcons.x(PhosphorIconsStyle.bold)),

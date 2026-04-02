@@ -4,6 +4,8 @@ import 'package:path/path.dart' as p;
 import '../models/area.dart';
 import '../models/subscriber.dart';
 import '../models/payment.dart';
+import '../models/import_run.dart';
+import '../models/import_result.dart';
 import 'backup_service.dart';
 
 class DatabaseService {
@@ -23,7 +25,7 @@ class DatabaseService {
     final path = p.join(dbPath, 'rent_ledger.db');
     return openDatabase(
       path,
-      version: 4,
+      version: 6,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -56,7 +58,6 @@ class DatabaseService {
       );
     }
     if (oldVersion < 3) {
-      // Add service_type column; existing subscribers default to 'tv'
       await db.execute(
         "ALTER TABLE subscribers ADD COLUMN service_type TEXT NOT NULL DEFAULT 'tv'",
       );
@@ -66,6 +67,19 @@ class DatabaseService {
       await db.execute(
         'ALTER TABLE subscribers ADD COLUMN start_month INTEGER',
       );
+    }
+    if (oldVersion < 5) {
+      // Add Internet-specific identifier columns
+      await db.execute('ALTER TABLE subscribers ADD COLUMN account_id TEXT');
+      await db.execute('ALTER TABLE subscribers ADD COLUMN username TEXT');
+      await db.execute('ALTER TABLE subscribers ADD COLUMN phone TEXT');
+      // Remediate legacy 'both' rows → default to 'tv'
+      await db.execute(
+        "UPDATE subscribers SET service_type = 'tv' WHERE service_type = 'both'",
+      );
+    }
+    if (oldVersion < 6) {
+      await _createImportTables(db);
     }
   }
 
@@ -90,6 +104,9 @@ class DatabaseService {
         service_type TEXT NOT NULL DEFAULT 'tv',
         start_year INTEGER,
         start_month INTEGER,
+        account_id TEXT,
+        username TEXT,
+        phone TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         FOREIGN KEY (area_id) REFERENCES areas(id)
       )
@@ -115,6 +132,42 @@ class DatabaseService {
     );
     await db.execute(
       'CREATE INDEX idx_subscribers_area ON subscribers(area_id)',
+    );
+
+    await _createImportTables(db);
+  }
+
+  Future<void> _createImportTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS import_runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        file_name TEXT NOT NULL,
+        service_type TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'success',
+        insert_count INTEGER NOT NULL DEFAULT 0,
+        update_count INTEGER NOT NULL DEFAULT 0,
+        reject_count INTEGER NOT NULL DEFAULT 0,
+        conflict_count INTEGER NOT NULL DEFAULT 0,
+        payment_count INTEGER NOT NULL DEFAULT 0,
+        started_at TEXT NOT NULL DEFAULT (datetime('now')),
+        completed_at TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS import_errors (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id INTEGER NOT NULL,
+        row_number INTEGER NOT NULL,
+        source_column TEXT,
+        reason TEXT NOT NULL,
+        severity TEXT NOT NULL DEFAULT 'error',
+        FOREIGN KEY (run_id) REFERENCES import_runs(id)
+      )
+    ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_import_errors_run ON import_errors(run_id)',
     );
   }
 
@@ -188,7 +241,7 @@ class DatabaseService {
     return Subscriber.fromMap(maps.first);
   }
 
-  /// [serviceType] — pass 'tv' or 'fiber' to filter; null means no filter (all).
+  /// [serviceType] — pass 'tv' or 'fiber' to filter; null means no filter.
   Future<List<Subscriber>> getSubscribers({
     int? areaId,
     bool? isActive,
@@ -215,7 +268,7 @@ class DatabaseService {
       args.addAll(['%$search%', '%$search%', '%$search%']);
     }
     if (serviceType != null) {
-      where.add("(s.service_type = ? OR s.service_type = 'both')");
+      where.add('s.service_type = ?');
       args.add(serviceType);
     }
 
@@ -290,6 +343,95 @@ class DatabaseService {
     return subscribers;
   }
 
+  // --------------- IMPORT: SERVICE-BOUND UPSERT ---------------
+
+  /// Find a subscriber by strong ID within a specific service type.
+  /// Returns null if no match. Never crosses service boundaries.
+  Future<int?> findSubscriberByStrongId(
+    String serviceType,
+    String? vcNumber,
+    String? accountId,
+    String? username,
+    String? phone,
+  ) async {
+    final db = await database;
+    if (serviceType == 'tv' && vcNumber != null && vcNumber.isNotEmpty) {
+      final r = await db.rawQuery(
+        'SELECT id FROM subscribers WHERE vc_number = ? AND service_type = ?',
+        [vcNumber, serviceType],
+      );
+      if (r.isNotEmpty) return r.first['id'] as int;
+    }
+    if (serviceType == 'fiber') {
+      if (accountId != null && accountId.isNotEmpty) {
+        final r = await db.rawQuery(
+          'SELECT id FROM subscribers WHERE account_id = ? AND service_type = ?',
+          [accountId, serviceType],
+        );
+        if (r.isNotEmpty) return r.first['id'] as int;
+      }
+      if (username != null && username.isNotEmpty) {
+        final r = await db.rawQuery(
+          'SELECT id FROM subscribers WHERE username = ? AND service_type = ?',
+          [username, serviceType],
+        );
+        if (r.isNotEmpty) return r.first['id'] as int;
+      }
+      if (phone != null && phone.isNotEmpty) {
+        final r = await db.rawQuery(
+          'SELECT id FROM subscribers WHERE phone = ? AND service_type = ?',
+          [phone, serviceType],
+        );
+        if (r.isNotEmpty) return r.first['id'] as int;
+      }
+    }
+    return null;
+  }
+
+  /// Check if a strong ID exists in the OPPOSITE service (cross-service conflict).
+  Future<bool> hasConflictInOppositeService(
+    String serviceType,
+    String? vcNumber,
+    String? accountId,
+    String? username,
+  ) async {
+    final db = await database;
+    final opposite = serviceType == 'tv' ? 'fiber' : 'tv';
+
+    if (vcNumber != null && vcNumber.isNotEmpty) {
+      final r = await db.rawQuery(
+        'SELECT 1 FROM subscribers WHERE vc_number = ? AND service_type = ?',
+        [vcNumber, opposite],
+      );
+      if (r.isNotEmpty) return true;
+    }
+    if (accountId != null && accountId.isNotEmpty) {
+      final r = await db.rawQuery(
+        'SELECT 1 FROM subscribers WHERE account_id = ? AND service_type = ?',
+        [accountId, opposite],
+      );
+      if (r.isNotEmpty) return true;
+    }
+    if (username != null && username.isNotEmpty) {
+      final r = await db.rawQuery(
+        'SELECT 1 FROM subscribers WHERE username = ? AND service_type = ?',
+        [username, opposite],
+      );
+      if (r.isNotEmpty) return true;
+    }
+    return false;
+  }
+
+  /// Fallback: find by name within the same service type.
+  Future<int?> findSubscriberByName(String name, String serviceType) async {
+    final db = await database;
+    final r = await db.rawQuery(
+      'SELECT id FROM subscribers WHERE name = ? AND service_type = ?',
+      [name, serviceType],
+    );
+    return r.isEmpty ? null : r.first['id'] as int;
+  }
+
   // --------------- PAYMENTS ---------------
 
   Future<int> insertOrUpdatePayment(Payment payment) async {
@@ -353,8 +495,6 @@ class DatabaseService {
 
   // --------------- DUE CALCULATION ---------------
 
-  /// Returns the running balance at the START of [year] for [subscriberId].
-  /// Charges begin from the subscriber creation month.
   Future<double> getYearStartBalance(int subscriberId, int year) async {
     final sub = await getSubscriber(subscriberId);
     if (sub == null) return 0;
@@ -365,7 +505,6 @@ class DatabaseService {
 
     if (year <= startYear) return sub.previousDue;
 
-    // Months charged: from (startYear, startMonth) through end of (year - 1)
     final monthsCharged = (year - 1 - startYear) * 12 + (12 - startMonth + 1);
 
     final db = await database;
@@ -437,7 +576,7 @@ class DatabaseService {
     final db = await database;
 
     final serviceFilter = serviceType != null
-        ? "AND (s.service_type = '$serviceType' OR s.service_type = 'both')"
+        ? "AND s.service_type = '$serviceType'"
         : '';
 
     const startedByMonthFilter = '''
@@ -508,7 +647,7 @@ class DatabaseService {
   }) async {
     final db = await database;
     final serviceFilter = serviceType != null
-        ? "AND (s.service_type = '$serviceType' OR s.service_type = 'both')"
+        ? "AND s.service_type = '$serviceType'"
         : '';
 
     return db.rawQuery(
@@ -539,6 +678,52 @@ class DatabaseService {
     ''',
       [year, month, year, month],
     );
+  }
+
+  // --------------- IMPORT HISTORY ---------------
+
+  Future<int> insertImportRun(ImportRun run) async {
+    final db = await database;
+    return db.insert('import_runs', run.toMap());
+  }
+
+  Future<void> updateImportRun(ImportRun run) async {
+    final db = await database;
+    await db.update(
+      'import_runs',
+      run.toMap(),
+      where: 'id = ?',
+      whereArgs: [run.id],
+    );
+  }
+
+  Future<List<ImportRun>> getImportRuns() async {
+    final db = await database;
+    final maps = await db.query('import_runs', orderBy: 'started_at DESC');
+    return maps.map((m) => ImportRun.fromMap(m)).toList();
+  }
+
+  Future<void> insertImportErrors(
+    int runId,
+    List<ImportRowError> errors,
+  ) async {
+    final db = await database;
+    final batch = db.batch();
+    for (final error in errors) {
+      batch.insert('import_errors', {'run_id': runId, ...error.toMap()});
+    }
+    await batch.commit(noResult: true);
+  }
+
+  Future<List<ImportRowError>> getImportErrors(int runId) async {
+    final db = await database;
+    final maps = await db.query(
+      'import_errors',
+      where: 'run_id = ?',
+      whereArgs: [runId],
+      orderBy: 'row_number',
+    );
+    return maps.map((m) => ImportRowError.fromMap(m)).toList();
   }
 
   // --------------- UTILITIES ---------------

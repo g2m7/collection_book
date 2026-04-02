@@ -26,10 +26,10 @@ class AppTheme {
   }
 
   static ThemeData themeFor(ServiceMode mode) {
-    final primary =
-        mode == ServiceMode.tv ? _primaryTV : _primaryFiber;
-    final primaryDark =
-        mode == ServiceMode.tv ? _primaryDarkTV : _primaryDarkFiber;
+    final primary = mode == ServiceMode.tv ? _primaryTV : _primaryFiber;
+    final primaryDark = mode == ServiceMode.tv
+        ? _primaryDarkTV
+        : _primaryDarkFiber;
 
     return ThemeData(
       useMaterial3: true,
@@ -67,8 +67,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: Colors.grey.shade300),
@@ -86,15 +88,11 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: Colors.white,
-          padding:
-              const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       textTheme: const TextTheme(

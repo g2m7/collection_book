@@ -184,7 +184,10 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconButton(
-            icon: Icon(PhosphorIcons.caretLeft(PhosphorIconsStyle.bold), color: Colors.white),
+            icon: Icon(
+              PhosphorIcons.caretLeft(PhosphorIconsStyle.bold),
+              color: Colors.white,
+            ),
             onPressed: () => _changeMonth(-1),
           ),
           GestureDetector(
@@ -213,7 +216,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           IconButton(
-            icon: Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold), color: Colors.white),
+            icon: Icon(
+              PhosphorIcons.caretRight(PhosphorIconsStyle.bold),
+              color: Colors.white,
+            ),
             onPressed: () => _changeMonth(1),
           ),
         ],

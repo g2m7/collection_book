@@ -23,6 +23,9 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
   final _vcController = TextEditingController();
   final _rentController = TextEditingController();
   final _prevDueController = TextEditingController(text: '0');
+  final _accountIdController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _phoneController = TextEditingController();
 
   List<Area> _areas = [];
   int? _selectedAreaId;
@@ -31,10 +34,11 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
   bool _saving = false;
   Subscriber? _existing;
 
-  /// 'tv' | 'fiber' | 'both'
+  /// 'tv' | 'fiber'
   late String _serviceType;
 
   bool get _isEditing => widget.subscriberId != null;
+  bool get _isFiber => _serviceType == 'fiber';
 
   @override
   void initState() {
@@ -54,6 +58,9 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
         _vcController.text = existing.vcNumber ?? '';
         _rentController.text = existing.monthlyRent.toStringAsFixed(0);
         _prevDueController.text = existing.previousDue.toStringAsFixed(0);
+        _accountIdController.text = existing.accountId ?? '';
+        _usernameController.text = existing.username ?? '';
+        _phoneController.text = existing.phone ?? '';
         _selectedAreaId = existing.areaId;
         _isActive = existing.isActive;
         _serviceType = existing.serviceType;
@@ -85,6 +92,15 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
       previousDue: double.tryParse(_prevDueController.text) ?? 0,
       isActive: _isActive,
       serviceType: _serviceType,
+      accountId: _accountIdController.text.trim().isNotEmpty
+          ? _accountIdController.text.trim()
+          : null,
+      username: _usernameController.text.trim().isNotEmpty
+          ? _usernameController.text.trim()
+          : null,
+      phone: _phoneController.text.trim().isNotEmpty
+          ? _phoneController.text.trim()
+          : null,
     );
 
     if (_isEditing) {
@@ -113,6 +129,9 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
     _vcController.dispose();
     _rentController.dispose();
     _prevDueController.dispose();
+    _accountIdController.dispose();
+    _usernameController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -170,16 +189,46 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                   ),
 
                   const SizedBox(height: 16),
-                  _label('VC Number'),
+                  _label(_isFiber ? 'Account ID' : 'VC Number'),
                   TextFormField(
                     controller: _vcController,
-                    decoration: const InputDecoration(
-                      hintText: 'Account/card number…',
+                    decoration: InputDecoration(
+                      hintText: _isFiber
+                          ? 'Account or card number…'
+                          : 'VC / STB number…',
                     ),
                     keyboardType: TextInputType.text,
                     spellCheckConfiguration:
                         const SpellCheckConfiguration.disabled(),
                   ),
+
+                  // Internet-specific identifier fields
+                  if (_isFiber) ...[
+                    const SizedBox(height: 16),
+                    _label('Username'),
+                    TextFormField(
+                      controller: _usernameController,
+                      decoration: const InputDecoration(
+                        hintText: 'Login username…',
+                      ),
+                      keyboardType: TextInputType.text,
+                      autocorrect: false,
+                      spellCheckConfiguration:
+                          const SpellCheckConfiguration.disabled(),
+                    ),
+                    const SizedBox(height: 16),
+                    _label('Phone'),
+                    TextFormField(
+                      controller: _phoneController,
+                      decoration: const InputDecoration(
+                        hintText: 'Mobile number…',
+                      ),
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      spellCheckConfiguration:
+                          const SpellCheckConfiguration.disabled(),
+                    ),
+                  ],
 
                   const SizedBox(height: 16),
                   _label('Monthly Rent *'),
@@ -280,7 +329,7 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
   }
 }
 
-/// Three-button segmented selector for TV / Fiber / Both.
+/// Two-button segmented selector for TV / Fiber.
 class _ServiceSelector extends StatelessWidget {
   final String value;
   final ValueChanged<String> onChanged;
@@ -297,7 +346,7 @@ class _ServiceSelector extends StatelessWidget {
           context,
           'tv',
           PhosphorIcons.televisionSimple(PhosphorIconsStyle.bold),
-          'TV',
+          'Cable TV',
           primary,
         ),
         const SizedBox(width: 8),
@@ -305,16 +354,8 @@ class _ServiceSelector extends StatelessWidget {
           context,
           'fiber',
           PhosphorIcons.globeHemisphereWest(PhosphorIconsStyle.bold),
-          'Fiber',
+          'Internet',
           primary,
-        ),
-        const SizedBox(width: 8),
-        _btn(
-          context,
-          'both',
-          PhosphorIcons.infinity(PhosphorIconsStyle.bold),
-          'Both',
-          Colors.purple,
         ),
       ],
     );
