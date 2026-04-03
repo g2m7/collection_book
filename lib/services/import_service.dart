@@ -56,15 +56,157 @@ class ImportService {
       return _parseBook1Xlsx(bytes);
     }
 
-    // .xls files from this operator are HTML tables
-    final text = String.fromCharCodes(bytes);
+    // .xls files can be:
+    //   a) Genuine binary Excel (BIFF) — the excel package handles these
+    //   b) HTML tables disguised as .xls — operator report exports
+    //   c) HTML frameset exports — unsupported (data in external files)
+    if (lower.endsWith('.xls')) {
+      return _parseXls(bytes);
+    }
+
+    // Fallback: try to detect format from content
+    return _parseFromContent(bytes);
+  }
+
+  /// Handle .xls files: try binary Excel first, then HTML fallback.
+  Future<ImportPreview> _parseXls(List<int> bytes) async {
+    // Check if it's HTML by looking at the first bytes
+    final header = String.fromCharCodes(
+      bytes.take(500),
+      0,
+      bytes.length < 500 ? bytes.length : 500,
+    ).toLowerCase();
+    final isHtml =
+        header.contains('<html') ||
+        header.contains('<!doctype') ||
+        header.contains('<table');
+
+    if (!isHtml) {
+      // Try binary Excel parse (BIFF format)
+      try {
+        return _parseBook1Xlsx(bytes);
+      } catch (_) {
+        // Not a valid Excel file — return unknown
+        return ImportPreview(format: ImportFormat.unknown, records: []);
+      }
+    }
+
+    // It's HTML — decode properly
+    final text = utf8.decode(bytes, allowMalformed: true);
+
+    // Detect frameset exports (data lives in external sheet files)
+    if (text.contains('Excel Workbook Frameset') ||
+        text.contains('<frameset') ||
+        text.contains('File-List')) {
+      return ImportPreview(format: ImportFormat.unknown, records: []);
+    }
+
+    return _parseFromHtmlContent(text);
+  }
+
+  /// Parse from raw content when extension doesn't help.
+  ImportPreview _parseFromContent(List<int> bytes) {
+    final text = utf8.decode(bytes, allowMalformed: true);
+    return _parseFromHtmlContent(text);
+  }
+
+  /// Detect operator report format from HTML content.
+  ImportPreview _parseFromHtmlContent(String text) {
     if (text.contains('STB_NUMBER') || text.contains('START_DATE')) {
       return _parseActivePackagesHtml(text);
     }
     if (text.contains('STB_ISSUE_DATE')) {
       return _parseTotalListHtml(text);
     }
+    // Try generic HTML table parse as last resort
+    if (text.contains('<table') || text.contains('<tr')) {
+      return _parseGenericHtmlTable(text);
+    }
     return ImportPreview(format: ImportFormat.unknown, records: []);
+  }
+
+  /// Best-effort parse of any HTML table with subscriber-like data.
+  ImportPreview _parseGenericHtmlTable(String html) {
+    final rows = _htmlRows(html);
+    if (rows.isEmpty || rows.length < 2) {
+      return ImportPreview(format: ImportFormat.unknown, records: []);
+    }
+
+    final headers = rows.first;
+    final normalized = headers.map((h) => _normalizeHeader(h)).toList();
+    final idx = <String, int>{};
+    for (int i = 0; i < normalized.length; i++) {
+      idx[normalized[i]] = i;
+    }
+
+    // Try to resolve columns using synonyms
+    final nameCol = _resolveCol(idx, [
+      'name',
+      'subscriber_name',
+      'customer_name',
+      'customername',
+    ]);
+    final vcCol = _resolveCol(idx, [
+      'vc_number',
+      'vcnumber',
+      'vc_card',
+      'stb_number',
+      'stbnumber',
+      'customer_nbr',
+      'vc_no',
+      'vcno',
+      'vc',
+    ]);
+    final areaCol = _resolveCol(idx, [
+      'area',
+      'address',
+      'address3',
+      'location',
+    ]);
+    final statusCol = _resolveCol(idx, ['status', 'is_active', 'active']);
+    final rentCol = _resolveCol(idx, [
+      'monthly_rent',
+      'monthlyrent',
+      'rent',
+      'amount',
+      'monthly_amount',
+    ]);
+
+    // Need at least a name or VC column to be useful
+    if (nameCol == null && vcCol == null) {
+      return ImportPreview(format: ImportFormat.unknown, records: []);
+    }
+
+    final records = <ImportRecord>[];
+    for (int i = 1; i < rows.length; i++) {
+      final row = rows[i];
+      if (row.length <= 1) continue;
+
+      final name = _cleanName(_col(row, nameCol));
+      final vc = _cleanVc(_col(row, vcCol));
+      if (name == null && vc == null) continue;
+
+      final statusStr = _col(row, statusCol);
+      final rentStr = _col(row, rentCol);
+
+      records.add(
+        ImportRecord(
+          name: name,
+          vc: vc,
+          area: _col(row, areaCol),
+          rent: rentStr != null ? double.tryParse(rentStr) : null,
+          isActive: statusStr != null
+              ? statusStr.toUpperCase() == 'ACTIVE'
+              : null,
+        ),
+      );
+    }
+
+    return ImportPreview(
+      format: ImportFormat.totalList,
+      records: records,
+      sourceHeaders: headers,
+    );
   }
 
   // =========================================================================
