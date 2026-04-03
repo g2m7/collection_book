@@ -3,7 +3,7 @@ import 'package:ledger/main.dart';
 
 void main() {
   testWidgets('App launches', (WidgetTester tester) async {
-    await tester.pumpWidget(const RentLedgerApp());
-    expect(find.text('Rent Ledger'), findsOneWidget);
+    await tester.pumpWidget(const CollectionBookApp());
+    expect(find.text('Collection Book'), findsOneWidget);
   });
 }

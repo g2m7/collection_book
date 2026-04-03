@@ -284,10 +284,10 @@ class DatabaseService {
           s.previous_due
           + (
               CASE
-                WHEN ((? - CAST(strftime('%Y', s.created_at) AS INTEGER)) * 12
-                  + (? - CAST(strftime('%m', s.created_at) AS INTEGER)) + 1) > 0
-                THEN ((? - CAST(strftime('%Y', s.created_at) AS INTEGER)) * 12
-                  + (? - CAST(strftime('%m', s.created_at) AS INTEGER)) + 1)
+                WHEN ((? - COALESCE(s.start_year, CAST(strftime('%Y', s.created_at) AS INTEGER))) * 12
+                  + (? - COALESCE(s.start_month, CAST(strftime('%m', s.created_at) AS INTEGER))) + 1) > 0
+                THEN ((? - COALESCE(s.start_year, CAST(strftime('%Y', s.created_at) AS INTEGER))) * 12
+                  + (? - COALESCE(s.start_month, CAST(strftime('%m', s.created_at) AS INTEGER))) + 1)
                 ELSE 0
               END
             ) * s.monthly_rent
@@ -295,10 +295,10 @@ class DatabaseService {
               SELECT SUM(p2.adjustment) FROM payments p2
               WHERE p2.subscriber_id = s.id
                 AND (
-                  p2.year > CAST(strftime('%Y', s.created_at) AS INTEGER)
+                  p2.year > COALESCE(s.start_year, CAST(strftime('%Y', s.created_at) AS INTEGER))
                   OR (
-                    p2.year = CAST(strftime('%Y', s.created_at) AS INTEGER)
-                    AND p2.month >= CAST(strftime('%m', s.created_at) AS INTEGER)
+                    p2.year = COALESCE(s.start_year, CAST(strftime('%Y', s.created_at) AS INTEGER))
+                    AND p2.month >= COALESCE(s.start_month, CAST(strftime('%m', s.created_at) AS INTEGER))
                   )
                 )
                 AND (
@@ -310,10 +310,10 @@ class DatabaseService {
               SELECT SUM(p3.amount_paid) FROM payments p3
               WHERE p3.subscriber_id = s.id
                 AND (
-                  p3.year > CAST(strftime('%Y', s.created_at) AS INTEGER)
+                  p3.year > COALESCE(s.start_year, CAST(strftime('%Y', s.created_at) AS INTEGER))
                   OR (
-                    p3.year = CAST(strftime('%Y', s.created_at) AS INTEGER)
-                    AND p3.month >= CAST(strftime('%m', s.created_at) AS INTEGER)
+                    p3.year = COALESCE(s.start_year, CAST(strftime('%Y', s.created_at) AS INTEGER))
+                    AND p3.month >= COALESCE(s.start_month, CAST(strftime('%m', s.created_at) AS INTEGER))
                   )
                 )
                 AND (
@@ -500,8 +500,8 @@ class DatabaseService {
     if (sub == null) return 0;
 
     final created = _parseCreatedAt(sub.createdAt);
-    final startYear = created?.year ?? DateTime.now().year;
-    final startMonth = created?.month ?? 1;
+    final startYear = sub.startYear ?? created?.year ?? DateTime.now().year;
+    final startMonth = sub.startMonth ?? created?.month ?? 1;
 
     if (year <= startYear) return sub.previousDue;
 
@@ -538,8 +538,8 @@ class DatabaseService {
     if (sub == null) return 0;
 
     final created = _parseCreatedAt(sub.createdAt);
-    final startYear = created?.year ?? year;
-    final startMonth = created?.month ?? month;
+    final startYear = sub.startYear ?? created?.year ?? year;
+    final startMonth = sub.startMonth ?? created?.month ?? month;
     final months = _monthsBetweenInclusive(startYear, startMonth, year, month);
     final totalRent = sub.monthlyRent * months;
     final result = await db.rawQuery(
@@ -581,10 +581,10 @@ class DatabaseService {
 
     const startedByMonthFilter = '''
       AND (
-        CAST(strftime('%Y', s.created_at) AS INTEGER) < ?
+        COALESCE(s.start_year, CAST(strftime('%Y', s.created_at) AS INTEGER)) < ?
         OR (
-          CAST(strftime('%Y', s.created_at) AS INTEGER) = ?
-          AND CAST(strftime('%m', s.created_at) AS INTEGER) <= ?
+          COALESCE(s.start_year, CAST(strftime('%Y', s.created_at) AS INTEGER)) = ?
+          AND COALESCE(s.start_month, CAST(strftime('%m', s.created_at) AS INTEGER)) <= ?
         )
       )
     ''';
@@ -615,17 +615,70 @@ class DatabaseService {
     final totalAdjustment =
         (paymentData.first['total_adjustment'] as num?)?.toDouble() ?? 0;
 
-    final totalExpected = Sqflite.firstIntValue(
-      await db.rawQuery(
-        'SELECT COALESCE(SUM(s.monthly_rent), 0) FROM subscribers s WHERE s.is_active = 1 $serviceFilter $startedByMonthFilter',
-        [year, year, month],
-      ),
+    final totalExpectedResult = await db.rawQuery(
+      'SELECT COALESCE(SUM(s.monthly_rent), 0) as total FROM subscribers s WHERE s.is_active = 1 $serviceFilter $startedByMonthFilter',
+      [year, year, month],
     );
 
     final paidCount = (paymentData.first['paid_count'] as num?)?.toInt() ?? 0;
     final totalCollected =
         (paymentData.first['total_collected'] as num?)?.toDouble() ?? 0;
-    final netExpected = (totalExpected ?? 0).toDouble() + totalAdjustment;
+    final totalExpected =
+        (totalExpectedResult.first['total'] as num?)?.toDouble() ?? 0;
+    final netExpected = totalExpected + totalAdjustment;
+
+    // Cumulative outstanding dues across all active subscribers
+    final duesResult = await db.rawQuery(
+      '''
+      SELECT COALESCE(SUM(
+        s.previous_due
+        + (CASE
+            WHEN ((? - COALESCE(s.start_year, CAST(strftime('%Y', s.created_at) AS INTEGER))) * 12
+              + (? - COALESCE(s.start_month, CAST(strftime('%m', s.created_at) AS INTEGER))) + 1) > 0
+            THEN ((? - COALESCE(s.start_year, CAST(strftime('%Y', s.created_at) AS INTEGER))) * 12
+              + (? - COALESCE(s.start_month, CAST(strftime('%m', s.created_at) AS INTEGER))) + 1)
+            ELSE 0
+          END) * s.monthly_rent
+        + COALESCE((
+            SELECT SUM(p2.adjustment) FROM payments p2
+            WHERE p2.subscriber_id = s.id
+              AND (p2.year > COALESCE(s.start_year, CAST(strftime('%Y', s.created_at) AS INTEGER))
+                OR (p2.year = COALESCE(s.start_year, CAST(strftime('%Y', s.created_at) AS INTEGER))
+                  AND p2.month >= COALESCE(s.start_month, CAST(strftime('%m', s.created_at) AS INTEGER))))
+              AND (p2.year < ? OR (p2.year = ? AND p2.month <= ?))
+          ), 0)
+        - COALESCE((
+            SELECT SUM(p3.amount_paid) FROM payments p3
+            WHERE p3.subscriber_id = s.id
+              AND (p3.year > COALESCE(s.start_year, CAST(strftime('%Y', s.created_at) AS INTEGER))
+                OR (p3.year = COALESCE(s.start_year, CAST(strftime('%Y', s.created_at) AS INTEGER))
+                  AND p3.month >= COALESCE(s.start_month, CAST(strftime('%m', s.created_at) AS INTEGER))))
+              AND (p3.year < ? OR (p3.year = ? AND p3.month <= ?))
+          ), 0)
+      ), 0) as total_dues
+      FROM subscribers s
+      WHERE s.is_active = 1
+        $serviceFilter
+        $startedByMonthFilter
+      ''',
+      [
+        year,
+        month,
+        year,
+        month,
+        year,
+        year,
+        month,
+        year,
+        year,
+        month,
+        year,
+        year,
+        month,
+      ],
+    );
+
+    final totalDues = (duesResult.first['total_dues'] as num?)?.toDouble() ?? 0;
 
     return {
       'subscriber_count': subscriberCount ?? 0,
@@ -633,10 +686,32 @@ class DatabaseService {
       'unpaid_count': (subscriberCount ?? 0) - paidCount,
       'total_collected': totalCollected,
       'total_expected': netExpected,
-      'collection_rate': (subscriberCount ?? 0) > 0
-          ? (paidCount / (subscriberCount ?? 1) * 100)
+      'total_dues': totalDues,
+      'collection_rate': netExpected > 0
+          ? (totalCollected / netExpected * 100).clamp(0, 100)
           : 0.0,
     };
+  }
+
+  /// Returns the earliest (start_year, start_month) across all active
+  /// subscribers for the given service type. Falls back to created_at.
+  Future<Map<String, int>?> getEarliestStartDate({String? serviceType}) async {
+    final db = await database;
+    final serviceFilter = serviceType != null
+        ? "AND service_type = '$serviceType'"
+        : '';
+    final result = await db.rawQuery('''
+      SELECT
+        MIN(
+          CAST(COALESCE(start_year, strftime('%Y', created_at)) AS INTEGER) * 100
+          + CAST(COALESCE(start_month, strftime('%m', created_at)) AS INTEGER)
+        ) as earliest
+      FROM subscribers
+      WHERE is_active = 1 $serviceFilter
+    ''');
+    final val = result.first['earliest'] as int?;
+    if (val == null) return null;
+    return {'year': val ~/ 100, 'month': val % 100};
   }
 
   /// [serviceType] — 'tv' or 'fiber' to scope area summary; null = all.
@@ -748,6 +823,16 @@ class DatabaseService {
     if (await targetFile.exists()) await targetFile.delete();
     await sourceFile.copy(targetPath);
     _db = await openDatabase(targetPath);
+  }
+
+  /// Wipe all app data and re-create tables from scratch.
+  Future<void> resetAllData() async {
+    await closeDb();
+    final targetPath = await getDatabasePath();
+    final file = File(targetPath);
+    if (await file.exists()) await file.delete();
+    // Re-open will trigger _onCreate, recreating all tables.
+    _db = await _initDb();
   }
 
   DateTime? _parseCreatedAt(String? value) {

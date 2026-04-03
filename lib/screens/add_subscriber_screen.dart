@@ -34,6 +34,9 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
   bool _saving = false;
   Subscriber? _existing;
 
+  int? _startMonth;
+  int? _startYear;
+
   /// 'tv' | 'fiber'
   late String _serviceType;
 
@@ -44,6 +47,9 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
   void initState() {
     super.initState();
     _serviceType = AppModeService().mode.key;
+    final now = DateTime.now();
+    _startMonth = now.month;
+    _startYear = now.year;
     _loadData();
   }
 
@@ -64,6 +70,8 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
         _selectedAreaId = existing.areaId;
         _isActive = existing.isActive;
         _serviceType = existing.serviceType;
+        _startYear = existing.startYear;
+        _startMonth = existing.startMonth;
       }
     }
     setState(() {
@@ -92,6 +100,8 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
       previousDue: double.tryParse(_prevDueController.text) ?? 0,
       isActive: _isActive,
       serviceType: _serviceType,
+      startYear: _startYear,
+      startMonth: _startMonth,
       accountId: _accountIdController.text.trim().isNotEmpty
           ? _accountIdController.text.trim()
           : null,
@@ -245,6 +255,64 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                       if (double.tryParse(v) == null) return 'Invalid amount';
                       return null;
                     },
+                  ),
+
+                  const SizedBox(height: 16),
+                  _label('Subscription Start'),
+                  Text(
+                    'Dues are calculated from this month onward.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: DropdownButtonFormField<int>(
+                          initialValue: _startMonth,
+                          decoration: const InputDecoration(hintText: 'Month…'),
+                          items: List.generate(12, (i) {
+                            const names = [
+                              'January',
+                              'February',
+                              'March',
+                              'April',
+                              'May',
+                              'June',
+                              'July',
+                              'August',
+                              'September',
+                              'October',
+                              'November',
+                              'December',
+                            ];
+                            return DropdownMenuItem(
+                              value: i + 1,
+                              child: Text(names[i]),
+                            );
+                          }),
+                          onChanged: (v) => setState(() => _startMonth = v),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          initialValue: _startYear,
+                          decoration: const InputDecoration(hintText: 'Year…'),
+                          items: () {
+                            final now = DateTime.now().year;
+                            return List.generate(5, (i) {
+                              final y = now - 3 + i;
+                              return DropdownMenuItem(
+                                value: y,
+                                child: Text('$y'),
+                              );
+                            });
+                          }(),
+                          onChanged: (v) => setState(() => _startYear = v),
+                        ),
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 16),

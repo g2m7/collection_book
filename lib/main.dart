@@ -15,11 +15,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DatabaseService().database;
   await AppModeService().init();
-  runApp(const RentLedgerApp());
+  runApp(const CollectionBookApp());
 }
 
-class RentLedgerApp extends StatelessWidget {
-  const RentLedgerApp({super.key});
+class CollectionBookApp extends StatelessWidget {
+  const CollectionBookApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +50,8 @@ class RentLedgerApp extends StatelessWidget {
                 builder: (context) => RecordPaymentScreen(
                   subscriberId: args?['subscriberId'] as int?,
                   subscriberName: args?['subscriberName'] as String?,
+                  initialMonth: args?['month'] as int?,
+                  initialYear: args?['year'] as int?,
                 ),
               );
             }

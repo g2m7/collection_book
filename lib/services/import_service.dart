@@ -48,7 +48,7 @@ class ImportPreview {
   int get paymentCount => records.fold(0, (s, r) => s + r.payments.length);
 
   String get formatLabel => switch (format) {
-    ImportFormat.book1 => 'Book1 ledger (subscribers + payments)',
+    ImportFormat.book1 => 'Book1 Collection Book (subscribers + payments)',
     ImportFormat.activePackages => 'Operator active-packages report',
     ImportFormat.totalList => 'Operator total-subscriber report',
     ImportFormat.csv => 'CSV subscriber list',
@@ -219,6 +219,27 @@ class ImportService {
       'amount',
       'monthly_amount',
     ]);
+    final accountIdCol = _resolveCol(idx, [
+      'account_id',
+      'accountid',
+      'customer_id',
+      'customerid',
+      'subscriber_id',
+      'subscriberid',
+    ]);
+    final usernameCol = _resolveCol(idx, [
+      'username',
+      'user_name',
+      'login',
+      'login_id',
+      'loginid',
+    ]);
+    final phoneCol = _resolveCol(idx, [
+      'phone',
+      'mobile',
+      'contact',
+      'phone_number',
+    ]);
 
     // Need at least a name or VC column to be useful
     if (nameCol == null && vcCol == null) {
@@ -246,6 +267,9 @@ class ImportService {
           isActive: statusStr != null
               ? statusStr.toUpperCase() == 'ACTIVE'
               : null,
+          accountId: _col(row, accountIdCol),
+          username: _col(row, usernameCol),
+          phone: _col(row, phoneCol),
         ),
       );
     }
@@ -335,6 +359,7 @@ class ImportService {
       errors: errors,
       totalRows: totalRows,
       validRows: validRows,
+      missingIdCount: missingId,
       canProceed: canProceed,
     );
   }
@@ -343,10 +368,11 @@ class ImportService {
     if (serviceType == 'tv') {
       return (rec.vc != null && rec.vc!.isNotEmpty);
     }
-    // Fiber: account_id, username, or phone
+    // Fiber: account_id, username, phone, OR vc (customer number / device ID)
     return (rec.accountId != null && rec.accountId!.isNotEmpty) ||
         (rec.username != null && rec.username!.isNotEmpty) ||
-        (rec.phone != null && rec.phone!.isNotEmpty);
+        (rec.phone != null && rec.phone!.isNotEmpty) ||
+        (rec.vc != null && rec.vc!.isNotEmpty);
   }
 
   List<FieldMapping> _buildMappings(ImportPreview preview, String serviceType) {
@@ -372,11 +398,20 @@ class ImportService {
         ),
       );
     } else {
+      // For fiber, any unique identifier works (account_id, username,
+      // phone, or even vc/customer_nbr as fallback)
+      final hasAnyId = preview.records.any(
+        (r) =>
+            (r.accountId != null && r.accountId!.isNotEmpty) ||
+            (r.username != null && r.username!.isNotEmpty) ||
+            (r.phone != null && r.phone!.isNotEmpty) ||
+            (r.vc != null && r.vc!.isNotEmpty),
+      );
       mappings.add(
         FieldMapping(
-          targetField: 'account_id / username / phone',
+          targetField: 'subscriber identifier',
           sourceColumn: isKnownFormat ? 'identifier (auto-detected)' : null,
-          confidence: isKnownFormat ? 0.8 : 0.0,
+          confidence: isKnownFormat && hasAnyId ? 0.9 : 0.0,
           isRequired: true,
         ),
       );
@@ -401,6 +436,41 @@ class ImportService {
     );
 
     return mappings;
+  }
+
+  // =========================================================================
+  // 2b) AUTO-ID — generate IDs for records missing strong identifiers
+  // =========================================================================
+
+  /// Returns a new [ImportPreview] with auto-generated IDs for records that
+  /// are missing a strong identifier. Only applies to fiber/net subscribers.
+  ImportPreview applyAutoIds(ImportPreview preview, String serviceType) {
+    if (serviceType == 'tv') return preview; // TV always needs real VC numbers
+
+    final now = DateTime.now();
+    final datePart =
+        '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+    int autoSeq = 0;
+
+    final patched = preview.records.map((rec) {
+      if (_hasStrongIdentifier(rec, serviceType)) return rec;
+
+      autoSeq++;
+      final autoId = 'NET-$datePart-${autoSeq.toString().padLeft(3, '0')}';
+      _log.d('Auto-ID assigned: "$autoId" → "${rec.name}"');
+      return rec.copyWith(accountId: autoId);
+    }).toList();
+
+    _log.i(
+      'applyAutoIds: patched $autoSeq of ${preview.records.length} records',
+    );
+
+    return ImportPreview(
+      format: preview.format,
+      records: patched,
+      sourceHeaders: preview.sourceHeaders,
+      mappings: preview.mappings,
+    );
   }
 
   // =========================================================================
@@ -996,6 +1066,13 @@ class ImportService {
     final records = <ImportRecord>[];
     final seen = <String>{};
 
+    // Resolve fiber-specific columns from the header
+    final accountIdIdx = idx['ACCOUNT_ID'] ?? idx['CUSTOMER_ID'];
+    final usernameIdx = idx['USERNAME'] ?? idx['USER_NAME'] ?? idx['LOGIN_ID'];
+    final phoneIdx = idx['PHONE'] ?? idx['MOBILE'] ?? idx['CONTACT'];
+    final customerNbrIdx = idx['CUSTOMER_NBR'];
+    final rentIdx = idx['MONTHLY_RENT'] ?? idx['AMOUNT'] ?? idx['RENT'];
+
     for (int i = 1; i < rows.length; i++) {
       final row = rows[i];
       if (row.length <= 1) continue;
@@ -1016,6 +1093,12 @@ class ImportService {
       final startDate = _parseDate(_col(row, idx['START_DATE']));
       final area = _col(row, idx['ADDRESS3'])?.trim();
       final status = _col(row, idx['STATUS'])?.toUpperCase() == 'ACTIVE';
+      final rentStr = rentIdx != null ? _col(row, rentIdx) : null;
+
+      // Fiber identifiers: try dedicated columns, fall back to CUSTOMER_NBR
+      final accountId = _col(row, accountIdIdx) ?? _col(row, customerNbrIdx);
+      final username = _col(row, usernameIdx);
+      final phone = _col(row, phoneIdx);
 
       records.add(
         ImportRecord(
@@ -1025,6 +1108,10 @@ class ImportService {
           startYear: startDate?.year,
           startMonth: startDate?.month,
           isActive: status,
+          rent: rentStr != null ? double.tryParse(rentStr) : null,
+          accountId: accountId,
+          username: username,
+          phone: phone,
         ),
       );
     }
@@ -1046,6 +1133,13 @@ class ImportService {
     final idx = _headerMap(headers);
     final records = <ImportRecord>[];
 
+    // Resolve fiber-specific columns from the header
+    final accountIdIdx = idx['ACCOUNT_ID'] ?? idx['CUSTOMER_ID'];
+    final usernameIdx = idx['USERNAME'] ?? idx['USER_NAME'] ?? idx['LOGIN_ID'];
+    final phoneIdx = idx['PHONE'] ?? idx['MOBILE'] ?? idx['CONTACT'];
+    final customerNbrIdx = idx['CUSTOMER_NBR'];
+    final rentIdx = idx['MONTHLY_RENT'] ?? idx['AMOUNT'] ?? idx['RENT'];
+
     for (int i = 1; i < rows.length; i++) {
       final row = rows[i];
       if (row.length <= 1) continue;
@@ -1057,6 +1151,12 @@ class ImportService {
       final startDate = _parseDate(_col(row, idx['STB_ISSUE_DATE']));
       final area = _col(row, idx['ADDRESS3'])?.trim();
       final status = _col(row, idx['STATUS'])?.toUpperCase() == 'ACTIVE';
+      final rentStr = rentIdx != null ? _col(row, rentIdx) : null;
+
+      // Fiber identifiers: try dedicated columns, fall back to CUSTOMER_NBR
+      final accountId = _col(row, accountIdIdx) ?? _col(row, customerNbrIdx);
+      final username = _col(row, usernameIdx);
+      final phone = _col(row, phoneIdx);
 
       records.add(
         ImportRecord(
@@ -1066,6 +1166,10 @@ class ImportService {
           startYear: startDate?.year,
           startMonth: startDate?.month,
           isActive: status,
+          rent: rentStr != null ? double.tryParse(rentStr) : null,
+          accountId: accountId,
+          username: username,
+          phone: phone,
         ),
       );
     }
@@ -1146,13 +1250,26 @@ class ImportService {
       'account_id',
       'accountid',
       'account',
+      'customer_id',
+      'customerid',
+      'subscriber_id',
+      'subscriberid',
+      'customer_nbr',
+      'customernbr',
     ]);
-    final usernameCol = _resolveCol(idx, ['username', 'user_name', 'login']);
+    final usernameCol = _resolveCol(idx, [
+      'username',
+      'user_name',
+      'login',
+      'login_id',
+      'loginid',
+    ]);
     final phoneCol = _resolveCol(idx, [
       'phone',
       'mobile',
       'contact',
       'phone_number',
+      'phonenumber',
     ]);
     final statusCol = _resolveCol(idx, ['status', 'is_active', 'active']);
 
@@ -1410,6 +1527,14 @@ class ImportService {
         );
         if (r.isNotEmpty) return r.first['id'] as int;
       }
+      // Fallback: vc_number for fiber (customer number / device ID)
+      if (vc != null && vc.isNotEmpty) {
+        final r = await txn.rawQuery(
+          'SELECT id FROM subscribers WHERE vc_number = ? AND service_type = ?',
+          [vc, serviceType],
+        );
+        if (r.isNotEmpty) return r.first['id'] as int;
+      }
     }
 
     // Fallback: name match within same service
@@ -1518,6 +1643,36 @@ class ImportRecord {
     this.phone,
     this.payments = const {},
   });
+
+  ImportRecord copyWith({
+    String? name,
+    String? alias,
+    String? vc,
+    String? area,
+    double? rent,
+    double? prevDue,
+    int? startYear,
+    int? startMonth,
+    bool? isActive,
+    String? accountId,
+    String? username,
+    String? phone,
+    Map<int, PaymentEntry>? payments,
+  }) => ImportRecord(
+    name: name ?? this.name,
+    alias: alias ?? this.alias,
+    vc: vc ?? this.vc,
+    area: area ?? this.area,
+    rent: rent ?? this.rent,
+    prevDue: prevDue ?? this.prevDue,
+    startYear: startYear ?? this.startYear,
+    startMonth: startMonth ?? this.startMonth,
+    isActive: isActive ?? this.isActive,
+    accountId: accountId ?? this.accountId,
+    username: username ?? this.username,
+    phone: phone ?? this.phone,
+    payments: payments ?? this.payments,
+  );
 }
 
 class PaymentEntry {

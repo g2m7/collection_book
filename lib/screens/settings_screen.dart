@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
@@ -199,6 +200,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: 'Collection Book',
                   subtitle: 'Version 1.0.0',
                 ),
+
+                const Divider(height: 1),
+                _sectionHeader('Danger Zone'),
+                _tile(
+                  icon: PhosphorIcons.warning(PhosphorIconsStyle.bold),
+                  title: 'Reset App',
+                  subtitle: 'Delete all data and start fresh',
+                  onTap: _resetApp,
+                  trailing: Icon(
+                    PhosphorIcons.caretRight(PhosphorIconsStyle.bold),
+                    color: const Color(0xFFC62828),
+                  ),
+                ),
+                const SizedBox(height: 32),
               ],
             ),
     );
@@ -485,5 +500,181 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _db.deleteArea(area.id!);
       _loadData();
     }
+  }
+
+  Future<void> _resetApp() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const _ResetConfirmationDialog(),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await _db.resetAllData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All data cleared. App has been reset.'),
+            backgroundColor: Color(0xFF2E7D32),
+          ),
+        );
+        // Navigate to home and clear the stack
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Reset failed: $e'),
+            backgroundColor: const Color(0xFFC62828),
+          ),
+        );
+      }
+    }
+  }
+}
+
+/// A dialog with a 10-second countdown timer before the user can confirm.
+class _ResetConfirmationDialog extends StatefulWidget {
+  const _ResetConfirmationDialog();
+
+  @override
+  State<_ResetConfirmationDialog> createState() =>
+      _ResetConfirmationDialogState();
+}
+
+class _ResetConfirmationDialogState extends State<_ResetConfirmationDialog> {
+  int _remainingSeconds = 10;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingSeconds <= 1) {
+        timer.cancel();
+      }
+      setState(() => _remainingSeconds--);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canConfirm = _remainingSeconds <= 0;
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      icon: Icon(
+        PhosphorIcons.warning(PhosphorIconsStyle.duotone),
+        size: 48,
+        color: const Color(0xFFC62828),
+      ),
+      title: const Text(
+        'Reset App?',
+        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFEBEE),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  PhosphorIcons.warning(PhosphorIconsStyle.bold),
+                  size: 20,
+                  color: const Color(0xFFC62828),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'This will permanently delete ALL data.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFB71C1C),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'All subscribers, payments, areas, and import history '
+            'will be erased. This action cannot be undone.\n\n'
+            'Make sure you have a backup before proceeding.',
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.5,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          if (!canConfirm) ...[
+            const SizedBox(height: 20),
+            SizedBox(
+              width: 56,
+              height: 56,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  CircularProgressIndicator(
+                    value: (10 - _remainingSeconds) / 10,
+                    strokeWidth: 4,
+                    backgroundColor: Colors.grey.shade200,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFFC62828),
+                    ),
+                  ),
+                  Center(
+                    child: Text(
+                      '$_remainingSeconds',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFC62828),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Please wait…',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text('Cancel', style: TextStyle(color: Colors.grey.shade600)),
+        ),
+        FilledButton(
+          onPressed: canConfirm ? () => Navigator.pop(context, true) : null,
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFC62828),
+            disabledBackgroundColor: Colors.grey.shade300,
+          ),
+          child: Text(
+            canConfirm ? 'Reset Everything' : 'Wait $_remainingSeconds…',
+          ),
+        ),
+      ],
+    );
   }
 }

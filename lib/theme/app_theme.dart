@@ -17,6 +17,7 @@ class AppTheme {
   static const unpaid = Color(0xFFC62828);
   static const overpaid = Color(0xFF1565C0);
   static const partial = Color(0xFFEF6C00);
+  static const pending = Color(0xFFE65100); // amber — dashboard KPI
   static const neutral = Color(0xFF616161);
 
   static Color dueColor(double due) {

@@ -72,6 +72,7 @@ class ImportValidationResult {
   final List<ImportRowError> errors;
   final int totalRows;
   final int validRows;
+  final int missingIdCount;
   final bool canProceed;
 
   const ImportValidationResult({
@@ -79,6 +80,7 @@ class ImportValidationResult {
     this.errors = const [],
     required this.totalRows,
     required this.validRows,
+    this.missingIdCount = 0,
     required this.canProceed,
   });
 

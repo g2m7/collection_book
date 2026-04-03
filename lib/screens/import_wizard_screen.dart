@@ -21,8 +21,8 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
   // Wizard state
   int _currentStep = 0;
   late String _serviceType;
-  late int _startMonth;
-  late int _startYear;
+  int? _startMonth;
+  int? _startYear;
   String? _filePath;
   String? _fileName;
   ImportPreview? _preview;
@@ -44,9 +44,8 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
   void initState() {
     super.initState();
     _serviceType = widget.preselectedService ?? AppModeService().mode.key;
-    final now = DateTime.now();
-    _startMonth = now.month;
-    _startYear = now.year;
+    _startMonth = null;
+    _startYear = null;
   }
 
   void _nextStep() {
@@ -136,9 +135,28 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
     }
   }
 
-  // Step 3 → 4: Dry run
+  // Step 3 → 4: Dry run (with auto-ID prompt for fiber)
   Future<void> _runDryRun() async {
     if (_preview == null) return;
+
+    // Check if fiber records are missing IDs
+    final needsAutoId =
+        _serviceType == 'fiber' &&
+        _validation != null &&
+        _validation!.missingIdCount > 0;
+
+    if (needsAutoId) {
+      final accepted = await _showAutoIdDialog(_validation!.missingIdCount);
+      if (!accepted || !mounted) return;
+
+      // Apply auto-generated IDs to the preview
+      final patched = _importService.applyAutoIds(_preview!, _serviceType);
+      setState(() => _preview = patched);
+
+      // Re-validate with the patched preview
+      final revalidation = _importService.validate(patched, _serviceType);
+      setState(() => _validation = revalidation);
+    }
 
     setState(() {
       _dryRunning = true;
@@ -163,6 +181,96 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
     }
   }
 
+  /// Friendly dialog explaining auto-ID to the user.
+  Future<bool> _showAutoIdDialog(int count) async {
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              icon: Icon(
+                PhosphorIcons.identificationBadge(PhosphorIconsStyle.duotone),
+                size: 48,
+                color: const Color(0xFFF57C00),
+              ),
+              title: const Text(
+                'Some Subscribers Have No ID',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3E0),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          PhosphorIcons.info(PhosphorIconsStyle.bold),
+                          size: 20,
+                          color: const Color(0xFFF57C00),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            '$count subscriber${count == 1 ? '' : 's'} found without an ID number.',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFE65100),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Think of it like a name tag! 🏷️\n\n'
+                    'Each subscriber needs a unique number so the app can '
+                    'tell them apart — just like how every student gets a '
+                    'roll number in school.\n\n'
+                    'Your file is missing these numbers for some people. '
+                    'We can give them automatic numbers (like NET-001, '
+                    'NET-002…) so everything works smoothly.\n\n'
+                    'You can always update these later!',
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.5,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text(
+                    'Go Back',
+                    style: TextStyle(color: Colors.grey.shade600),
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  icon: Icon(
+                    PhosphorIcons.sparkle(PhosphorIconsStyle.bold),
+                    size: 16,
+                  ),
+                  label: const Text('Use Auto IDs'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
   // Step 4 → 5: Execute import
   Future<void> _executeImport() async {
     if (_preview == null) return;
@@ -180,8 +288,8 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
         _preview!,
         _serviceType,
         _fileName ?? 'unknown',
-        defaultStartMonth: _startMonth,
-        defaultStartYear: _startYear,
+        defaultStartMonth: _startMonth!,
+        defaultStartYear: _startYear!,
         onProgress: (current, total) {
           if (mounted) {
             setState(() {
@@ -352,7 +460,9 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
           SizedBox(
             height: 52,
             child: FilledButton(
-              onPressed: _nextStep,
+              onPressed: (_startMonth != null && _startYear != null)
+                  ? _nextStep
+                  : null,
               child: const Text('Continue'),
             ),
           ),
@@ -445,6 +555,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
     final now = DateTime.now();
     // Allow current year and previous year
     final years = [now.year - 1, now.year];
+    final hasSelection = _startMonth != null && _startYear != null;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -476,8 +587,14 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'New subscribers will begin payment tracking from this month.',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+            'You must select the month from which payment tracking begins.',
+            style: TextStyle(
+              fontSize: 12,
+              color: hasSelection
+                  ? Colors.grey.shade500
+                  : const Color(0xFFC62828),
+              fontWeight: hasSelection ? FontWeight.normal : FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 12),
           Row(
@@ -495,6 +612,13 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                     child: DropdownButton<int>(
                       value: _startMonth,
                       isExpanded: true,
+                      hint: Text(
+                        'Select month…',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade400,
+                        ),
+                      ),
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey.shade800,
@@ -526,6 +650,13 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                     child: DropdownButton<int>(
                       value: _startYear,
                       isExpanded: true,
+                      hint: Text(
+                        'Select year…',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade400,
+                        ),
+                      ),
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey.shade800,
@@ -753,6 +884,39 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                 '…and ${validation.errors.length - 20} more issues',
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
               ),
+          ],
+
+          // Hint about missing IDs for fiber
+          if (_serviceType == 'fiber' && validation.missingIdCount > 0) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8E1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFFE082)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    PhosphorIcons.identificationBadge(PhosphorIconsStyle.bold),
+                    size: 18,
+                    color: const Color(0xFFF57C00),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '${validation.missingIdCount} subscriber${validation.missingIdCount == 1 ? '' : 's'} '
+                      'missing ID — auto IDs will be offered next.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
 
           const Spacer(),

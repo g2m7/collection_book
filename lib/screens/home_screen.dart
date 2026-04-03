@@ -20,6 +20,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _loading = true;
   late int _year;
   late int _month;
+  int? _earliestYear;
+  int? _earliestMonth;
 
   static const _months = [
     'Jan',
@@ -65,15 +67,26 @@ class _HomeScreenState extends State<HomeScreen> {
       _month,
       serviceType: mode.key,
     );
+    final earliest = await _db.getEarliestStartDate(serviceType: mode.key);
     if (!mounted) return;
     setState(() {
       _summary = summary;
       _areaSummary = areas;
+      _earliestYear = earliest?['year'];
+      _earliestMonth = earliest?['month'];
       _loading = false;
     });
   }
 
+  bool get _canGoBack {
+    if (_earliestYear == null) return true;
+    if (_year > _earliestYear!) return true;
+    if (_year == _earliestYear! && _month > (_earliestMonth ?? 1)) return true;
+    return false;
+  }
+
   void _changeMonth(int delta) {
+    if (delta < 0 && !_canGoBack) return;
     setState(() {
       _month += delta;
       if (_month > 12) {
@@ -100,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, mode, _) {
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Rent Ledger'),
+            title: const Text('Collection Book'),
             actions: [
               // --- Mode toggle in AppBar ---
               _ModePill(mode: mode, onToggle: _modeService.toggle),
@@ -167,6 +180,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () => Navigator.pushNamed(
               context,
               '/record-payment',
+              arguments: {'month': _month, 'year': _year},
             ).then((_) => _loadData()),
             icon: Icon(PhosphorIcons.currencyInr(PhosphorIconsStyle.bold)),
             label: const Text('Record Payment'),
@@ -186,9 +200,9 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: Icon(
               PhosphorIcons.caretLeft(PhosphorIconsStyle.bold),
-              color: Colors.white,
+              color: _canGoBack ? Colors.white : Colors.white38,
             ),
-            onPressed: () => _changeMonth(-1),
+            onPressed: _canGoBack ? () => _changeMonth(-1) : null,
           ),
           GestureDetector(
             onTap: () async {
@@ -236,72 +250,208 @@ class _HomeScreenState extends State<HomeScreen> {
     final paidCount = (_summary['paid_count'] as num?)?.toInt() ?? 0;
     final unpaidCount = (_summary['unpaid_count'] as num?)?.toInt() ?? 0;
     final rate = (_summary['collection_rate'] as num?)?.toDouble() ?? 0;
+    final totalDues = (_summary['total_dues'] as num?)?.toDouble() ?? 0;
+    final pendingThisMonth = (totalExpected - totalCollected).clamp(
+      0,
+      double.infinity,
+    );
 
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _statCard(
-                  'Collected',
-                  fmt.format(totalCollected),
-                  'of ${fmt.format(totalExpected)}',
-                  AppTheme.paid,
-                  PhosphorIcons.wallet(PhosphorIconsStyle.bold),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _statCard(
-                  'Pending',
-                  fmt.format(totalExpected - totalCollected),
-                  '${rate.toStringAsFixed(0)}% collected',
-                  totalExpected - totalCollected > 0
-                      ? AppTheme.unpaid
-                      : AppTheme.paid,
-                  PhosphorIcons.clock(PhosphorIconsStyle.bold),
-                ),
-              ),
-            ],
-          ),
+          _duesHeroCard(fmt, totalDues, subscriberCount),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _statCard(
-                  'Total',
-                  '$subscriberCount',
-                  'subscribers',
-                  AppTheme.neutral,
-                  PhosphorIcons.users(PhosphorIconsStyle.bold),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: _collectionCard(
+                    fmt,
+                    totalCollected,
+                    totalExpected,
+                    rate,
+                    paidCount,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _statCard(
-                  'Paid',
-                  '$paidCount',
-                  '$unpaidCount unpaid',
-                  paidCount > 0 ? AppTheme.paid : AppTheme.neutral,
-                  PhosphorIcons.checkCircle(PhosphorIconsStyle.bold),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _compactStatCard(
+                    label: 'Pending',
+                    value: fmt.format(pendingThisMonth),
+                    subtitle: '$unpaidCount unpaid',
+                    subtitleIcon: PhosphorIcons.user(PhosphorIconsStyle.bold),
+                    color: unpaidCount > 0 ? AppTheme.pending : AppTheme.paid,
+                    icon: PhosphorIcons.clock(PhosphorIconsStyle.bold),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _statCard(
-    String label,
-    String value,
-    String subtitle,
-    Color color,
-    IconData icon,
+  /// Full-width hero card showing cumulative outstanding dues.
+  Widget _duesHeroCard(
+    NumberFormat fmt,
+    double totalDues,
+    int subscriberCount,
   ) {
+    final hasDues = totalDues > 0;
+    final color = hasDues ? AppTheme.pending : AppTheme.paid;
+    final bgColor = hasDues ? const Color(0xFFFFF3E0) : const Color(0xFFE8F5E9);
+    final borderColor = hasDues
+        ? const Color(0xFFFFE0B2)
+        : const Color(0xFFC8E6C9);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                PhosphorIcons.receipt(PhosphorIconsStyle.bold),
+                size: 18,
+                color: color,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Outstanding Dues',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '$subscriberCount subscribers',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              fmt.format(hasDues ? totalDues : 0),
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
+                color: color,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+              maxLines: 1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            hasDues ? 'total balance to collect' : 'All dues cleared!',
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Collection card with inline progress bar.
+  Widget _collectionCard(
+    NumberFormat fmt,
+    double collected,
+    double expected,
+    double rate,
+    int paidCount,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(13),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                PhosphorIcons.wallet(PhosphorIconsStyle.bold),
+                size: 18,
+                color: AppTheme.paid,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Collected',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              fmt.format(collected),
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.paid,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+              maxLines: 1,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: (rate / 100).clamp(0.0, 1.0),
+              backgroundColor: Colors.grey.shade200,
+              color: AppTheme.paid,
+              minHeight: 5,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${rate.toStringAsFixed(0)}% · $paidCount paid',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Compact stat card used for the Pending KPI.
+  Widget _compactStatCard({
+    required String label,
+    required String value,
+    required String subtitle,
+    required Color color,
+    required IconData icon,
+    IconData? subtitleIcon,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -333,19 +483,36 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: color,
-              fontFeatures: const [FontFeature.tabularFigures()],
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: color,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+              maxLines: 1,
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+          Row(
+            children: [
+              if (subtitleIcon != null) ...[
+                Icon(subtitleIcon, size: 12, color: Colors.grey.shade500),
+                const SizedBox(width: 3),
+              ],
+              Expanded(
+                child: Text(
+                  subtitle,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -364,6 +531,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: () => Navigator.pushNamed(
           context,
           '/subscribers',
+          arguments: {'areaId': area['area_id']},
         ).then((_) => _loadData()),
         borderRadius: BorderRadius.circular(12),
         child: Padding(

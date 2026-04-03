@@ -122,7 +122,11 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
         onPressed: () => Navigator.pushNamed(
           context,
           '/record-payment',
-          arguments: {'subscriberId': sub.id, 'subscriberName': sub.name},
+          arguments: {
+            'subscriberId': sub.id,
+            'subscriberName': sub.name,
+            'year': _year,
+          },
         ).then((_) => _loadData()),
         icon: Icon(PhosphorIcons.currencyInr(PhosphorIconsStyle.bold)),
         label: const Text('Record Payment'),
@@ -252,7 +256,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
   Widget _buildYearSelector() {
     final sub = _subscriber;
     final created = _parseCreatedAt(sub?.createdAt);
-    final firstYear = created?.year;
+    final firstYear = sub?.startYear ?? created?.year;
     final canGoBack = firstYear == null || _year > firstYear;
     final canGoForward = _year < DateTime.now().year + 1;
 
@@ -303,13 +307,22 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
     final paymentMap = {for (final p in _payments) p.month: p};
     final created = _parseCreatedAt(sub.createdAt);
 
-    // Determine first month to display from subscriber creation date.
-    final isCreationYear = created != null && _year == created.year;
-    final firstMonth = isCreationYear ? created.month : 1;
+    // Determine effective start year/month from explicit start fields,
+    // falling back to created_at timestamp.
+    final effectiveStartYear = sub.startYear ?? created?.year;
+    final effectiveStartMonth = sub.startMonth ?? created?.month;
+
+    // Determine first month to display.
+    final isStartYear =
+        effectiveStartYear != null && _year == effectiveStartYear;
+    final firstMonth = isStartYear ? (effectiveStartMonth ?? 1) : 1;
     final monthCount = 12 - firstMonth + 1;
 
-    // If viewing a year before subscriber creation, show nothing.
-    if (created != null && _year < created.year) {
+    // If viewing a year before subscriber start, show nothing.
+    if (effectiveStartYear != null && _year < effectiveStartYear) {
+      final label = effectiveStartMonth != null
+          ? '${_monthShort[effectiveStartMonth - 1]} $effectiveStartYear'
+          : '$effectiveStartYear';
       return Container(
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.all(32),
@@ -319,7 +332,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
         ),
         child: Center(
           child: Text(
-            'Subscriber added ${_monthShort[created.month - 1]} ${created.year}',
+            'Subscriber starts from $label',
             style: TextStyle(color: Colors.grey.shade500),
           ),
         ),

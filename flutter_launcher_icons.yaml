@@ -2,4 +2,4 @@ flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   remove_alpha_ios: true
-  image_path: "Gemini_Generated_Image_cnnu4rcnnu4rcnnu-2.png"
+  image_path: "assets/app_icon.png"
