@@ -2,9 +2,21 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:excel/excel.dart';
 import 'package:html/parser.dart' as html_parser;
+import 'package:logger/logger.dart';
 import '../models/import_result.dart';
 import '../models/import_run.dart';
 import 'database_service.dart';
+
+final _log = Logger(
+  printer: PrettyPrinter(
+    methodCount: 0,
+    errorMethodCount: 3,
+    lineLength: 80,
+    colors: true,
+    printEmojis: true,
+    dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
+  ),
+);
 
 // ---------------------------------------------------------------------------
 // Public surface
@@ -45,27 +57,45 @@ class ImportService {
   // =========================================================================
 
   Future<ImportPreview> preview(String path) async {
+    _log.i('📂 preview() called with: $path');
     final bytes = await File(path).readAsBytes();
+    _log.d('File size: ${bytes.length} bytes');
     final lower = path.toLowerCase();
 
+    ImportPreview result;
+
     if (lower.endsWith('.csv')) {
-      return _parseCsv(bytes);
+      _log.i('Detected CSV extension');
+      result = _parseCsv(bytes);
+    } else if (lower.endsWith('.xlsx')) {
+      _log.i('Detected XLSX extension');
+      result = _parseBook1Xlsx(bytes);
+    } else if (lower.endsWith('.xls')) {
+      _log.i('Detected XLS extension — trying multi-format parse');
+      result = await _parseXls(bytes);
+    } else {
+      _log.w('Unknown extension — trying content-based detection');
+      result = _parseFromContent(bytes);
     }
 
-    if (lower.endsWith('.xlsx')) {
-      return _parseBook1Xlsx(bytes);
+    _log.i(
+      'Preview result: format=${result.format.name}, '
+      'records=${result.records.length}, '
+      'payments=${result.paymentCount}',
+    );
+
+    // Log first 3 records for debugging
+    for (int i = 0; i < result.records.length && i < 3; i++) {
+      final r = result.records[i];
+      _log.d(
+        'Record[$i]: name="${r.name}", vc="${r.vc}", '
+        'area="${r.area}", rent=${r.rent}, '
+        'accountId="${r.accountId}", username="${r.username}", '
+        'phone="${r.phone}"',
+      );
     }
 
-    // .xls files can be:
-    //   a) Genuine binary Excel (BIFF) — the excel package handles these
-    //   b) HTML tables disguised as .xls — operator report exports
-    //   c) HTML frameset exports — unsupported (data in external files)
-    if (lower.endsWith('.xls')) {
-      return _parseXls(bytes);
-    }
-
-    // Fallback: try to detect format from content
-    return _parseFromContent(bytes);
+    return result;
   }
 
   /// Handle .xls files: try binary Excel first, then HTML fallback.
@@ -81,12 +111,15 @@ class ImportService {
         header.contains('<!doctype') ||
         header.contains('<table');
 
+    _log.d('_parseXls: isHtml=$isHtml');
+
     if (!isHtml) {
       // Try binary Excel parse (BIFF format)
       try {
+        _log.i('Trying binary Excel parse (BIFF)');
         return _parseBook1Xlsx(bytes);
-      } catch (_) {
-        // Not a valid Excel file — return unknown
+      } catch (e) {
+        _log.e('Binary Excel parse failed: $e');
         return ImportPreview(format: ImportFormat.unknown, records: []);
       }
     }
@@ -98,6 +131,7 @@ class ImportService {
     if (text.contains('Excel Workbook Frameset') ||
         text.contains('<frameset') ||
         text.contains('File-List')) {
+      _log.w('Detected frameset HTML export — unsupported');
       return ImportPreview(format: ImportFormat.unknown, records: []);
     }
 
@@ -112,6 +146,13 @@ class ImportService {
 
   /// Detect operator report format from HTML content.
   ImportPreview _parseFromHtmlContent(String text) {
+    _log.d(
+      'HTML content detection: '
+      'STB_NUMBER=${text.contains("STB_NUMBER")}, '
+      'START_DATE=${text.contains("START_DATE")}, '
+      'STB_ISSUE_DATE=${text.contains("STB_ISSUE_DATE")}, '
+      'has_table=${text.contains("<table") || text.contains("<tr")}',
+    );
     if (text.contains('STB_NUMBER') || text.contains('START_DATE')) {
       return _parseActivePackagesHtml(text);
     }
@@ -214,9 +255,14 @@ class ImportService {
   // =========================================================================
 
   ImportValidationResult validate(ImportPreview preview, String serviceType) {
+    _log.i(
+      '✅ validate() called: ${preview.records.length} records, '
+      'serviceType=$serviceType, format=${preview.format.name}',
+    );
     final errors = <ImportRowError>[];
     int validRows = 0;
-    final invalidThreshold = 0.05; // 5% invalid rows → abort
+    int missingName = 0;
+    int missingId = 0;
 
     for (int i = 0; i < preview.records.length; i++) {
       final rec = preview.records[i];
@@ -226,16 +272,30 @@ class ImportService {
       // Required: name
       if (rec.name == null || rec.name!.trim().isEmpty) {
         rowErrors.add('Missing subscriber name');
+        missingName++;
       }
 
-      // Required: strong ID
+      // Strong ID: warn if missing, but don't block
       final hasStrongId = _hasStrongIdentifier(rec, serviceType);
       if (!hasStrongId) {
-        rowErrors.add(
-          serviceType == 'tv'
-              ? 'Missing strong ID (vc_number, stb_number, or customer_nbr)'
-              : 'Missing strong ID (account_id, username, or phone)',
-        );
+        // Log first 5 missing IDs for debugging
+        if (missingId < 5) {
+          _log.w(
+            'Row $rowNum: no strong ID — '
+            'name="${rec.name}", vc="${rec.vc}", '
+            'accountId="${rec.accountId}", '
+            'username="${rec.username}", phone="${rec.phone}"',
+          );
+        }
+        missingId++;
+        // Only block if name is also missing
+        if (rec.name == null || rec.name!.trim().isEmpty) {
+          rowErrors.add(
+            serviceType == 'tv'
+                ? 'Missing both name and ID (vc_number)'
+                : 'Missing both name and ID (account_id/username/phone)',
+          );
+        }
       }
 
       if (rowErrors.isEmpty) {
@@ -251,8 +311,14 @@ class ImportService {
     final invalidRatio = totalRows > 0
         ? (totalRows - validRows) / totalRows
         : 0.0;
-    final canProceed =
-        totalRows > 0 && invalidRatio <= invalidThreshold && validRows > 0;
+    // Allow up to 50% invalid rows before aborting
+    final canProceed = totalRows > 0 && invalidRatio <= 0.50 && validRows > 0;
+
+    _log.i(
+      'Validation result: valid=$validRows/$totalRows, '
+      'missingName=$missingName, missingId=$missingId, '
+      'errors=${errors.length}, canProceed=$canProceed',
+    );
 
     // Build mappings based on detected format
     final mappings = _buildMappings(preview, serviceType);
@@ -626,11 +692,31 @@ class ImportService {
 
   ImportPreview _parseBook1Xlsx(List<int> bytes) {
     final excel = Excel.decodeBytes(bytes);
-    final sheet = excel.tables['Sheet1'] ?? excel.tables.values.first;
+    final sheetName = excel.tables.containsKey('Sheet1')
+        ? 'Sheet1'
+        : excel.tables.keys.first;
+    final sheet = excel.tables[sheetName]!;
     final rows = sheet.rows;
+
+    _log.i(
+      '_parseBook1Xlsx: sheet="$sheetName", '
+      'totalRows=${rows.length}, maxCols=${sheet.maxColumns}',
+    );
+
+    // Log header row if available
+    if (rows.length > 2) {
+      final headerRow = rows[2];
+      final headerCells = <String>[];
+      for (int c = 0; c < headerRow.length && c < 10; c++) {
+        headerCells.add('[$c]=${headerRow[c]?.value}');
+      }
+      _log.d('Header row[2]: ${headerCells.join(", ")}');
+    }
 
     String? currentArea;
     final records = <ImportRecord>[];
+    int skippedNoData = 0;
+    int vcNullCount = 0;
 
     for (int i = 0; i < rows.length; i++) {
       if (i < 3) continue;
@@ -643,7 +729,20 @@ class ImportService {
 
       final name = _str(row, 3);
       final vc = _vcStr(row, 4);
-      if (name == null && vc == null) continue;
+      if (name == null && vc == null) {
+        skippedNoData++;
+        continue;
+      }
+
+      if (vc == null || vc.isEmpty) vcNullCount++;
+
+      // Log first 5 rows for debugging
+      if (records.length < 5) {
+        _log.d(
+          'Row[$i]: area="$currentArea", name="$name", vc="$vc", '
+          'raw_col4=${row.length > 4 ? row[4]?.value : "N/A"}',
+        );
+      }
 
       final alias = _str(row, 2);
       final rent = _num(row, 5) ?? 0;
@@ -680,6 +779,11 @@ class ImportService {
         ),
       );
     }
+
+    _log.i(
+      'Book1 parse complete: ${records.length} records, '
+      'skippedEmpty=$skippedNoData, vcNull=$vcNullCount',
+    );
 
     return ImportPreview(format: ImportFormat.book1, records: records);
   }
