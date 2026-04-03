@@ -21,6 +21,8 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
   // Wizard state
   int _currentStep = 0;
   late String _serviceType;
+  late int _startMonth;
+  late int _startYear;
   String? _filePath;
   String? _fileName;
   ImportPreview? _preview;
@@ -42,6 +44,9 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
   void initState() {
     super.initState();
     _serviceType = widget.preselectedService ?? AppModeService().mode.key;
+    final now = DateTime.now();
+    _startMonth = now.month;
+    _startYear = now.year;
   }
 
   void _nextStep() {
@@ -175,6 +180,8 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
         _preview!,
         _serviceType,
         _fileName ?? 'unknown',
+        defaultStartMonth: _startMonth,
+        defaultStartYear: _startYear,
         onProgress: (current, total) {
           if (mounted) {
             setState(() {
@@ -339,6 +346,8 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
             'Import Internet subscribers with account IDs',
             primary,
           ),
+          const SizedBox(height: 24),
+          _buildStartMonthPicker(primary),
           const Spacer(),
           SizedBox(
             height: 52,
@@ -414,6 +423,126 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildStartMonthPicker(Color primary) {
+    final monthNames = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    final now = DateTime.now();
+    // Allow current year and previous year
+    final years = [now.year - 1, now.year];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: primary.withAlpha(8),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: primary.withAlpha(40)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                PhosphorIcons.calendarBlank(PhosphorIconsStyle.bold),
+                size: 18,
+                color: primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Start Counting From',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'New subscribers will begin payment tracking from this month.',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: _startMonth,
+                      isExpanded: true,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade800,
+                      ),
+                      items: List.generate(12, (i) {
+                        return DropdownMenuItem(
+                          value: i + 1,
+                          child: Text(monthNames[i]),
+                        );
+                      }),
+                      onChanged: (v) {
+                        if (v != null) setState(() => _startMonth = v);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 2,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: _startYear,
+                      isExpanded: true,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade800,
+                      ),
+                      items: years.map((y) {
+                        return DropdownMenuItem(value: y, child: Text('$y'));
+                      }).toList(),
+                      onChanged: (v) {
+                        if (v != null) setState(() => _startYear = v);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -509,6 +509,8 @@ class ImportService {
     ImportPreview preview,
     String serviceType,
     String fileName, {
+    int? defaultStartMonth,
+    int? defaultStartYear,
     void Function(int current, int total)? onProgress,
   }) async {
     final db = await _db.database;
@@ -596,8 +598,8 @@ class ImportService {
               rec.alias,
               rec.rent,
               rec.prevDue,
-              rec.startYear,
-              rec.startMonth,
+              rec.startYear ?? defaultStartYear,
+              rec.startMonth ?? defaultStartMonth,
               rec.accountId,
               rec.username,
               rec.phone,
@@ -633,8 +635,8 @@ class ImportService {
               rec.rent ?? 0,
               rec.prevDue ?? 0,
               serviceType,
-              rec.startYear,
-              rec.startMonth,
+              rec.startYear ?? defaultStartYear,
+              rec.startMonth ?? defaultStartMonth,
               rec.accountId,
               rec.username,
               rec.phone,
