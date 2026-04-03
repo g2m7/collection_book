@@ -24,6 +24,13 @@ final _log = Logger(
 
 enum ImportFormat { book1, activePackages, totalList, csv, unknown }
 
+/// Internal helper for xlsx header detection.
+class _XlsxHeaderInfo {
+  final int headerRow;
+  final Map<String, int> columns;
+  const _XlsxHeaderInfo({required this.headerRow, required this.columns});
+}
+
 class ImportPreview {
   final ImportFormat format;
   final List<ImportRecord> records;
@@ -699,10 +706,194 @@ class ImportService {
     final rows = sheet.rows;
 
     _log.i(
-      '_parseBook1Xlsx: sheet="$sheetName", '
+      'parseXlsx: sheet="$sheetName", '
       'totalRows=${rows.length}, maxCols=${sheet.maxColumns}',
     );
 
+    // --- Auto-detect format by scanning first few rows for a header ---
+    final headerInfo = _detectXlsxHeaders(rows);
+    if (headerInfo != null) {
+      _log.i(
+        'Detected header-based xlsx at row ${headerInfo.headerRow}: '
+        '${headerInfo.columns}',
+      );
+      return _parseHeaderBasedXlsx(rows, headerInfo);
+    }
+
+    // --- No header found → assume Book1 positional layout ---
+    _log.i('No header row found → using Book1 positional layout');
+    return _parseBook1PositionalXlsx(rows);
+  }
+
+  /// Scan first 5 rows for a header row with recognizable column names.
+  _XlsxHeaderInfo? _detectXlsxHeaders(List<List<Data?>> rows) {
+    const knownHeaders = {
+      'name',
+      'subscriber_name',
+      'customer_name',
+      'customername',
+      'stb_number',
+      'stbnumber',
+      'vc_number',
+      'vcnumber',
+      'vc_card',
+      'customer_nbr',
+      'status',
+      'area',
+      'address',
+      'address3',
+      'amount',
+      'monthly_rent',
+      'rent',
+      'due',
+      'title',
+      'stb_issue_date',
+      'start_date',
+      'account_id',
+      'username',
+      'phone',
+    };
+
+    for (int r = 0; r < rows.length && r < 5; r++) {
+      final row = rows[r];
+      int matchCount = 0;
+      final colMap = <String, int>{};
+
+      for (int c = 0; c < row.length; c++) {
+        final raw = _cellRawString(row[c]?.value)?.trim();
+        if (raw == null || raw.isEmpty) continue;
+        final norm = _normalizeHeader(raw);
+        if (knownHeaders.contains(norm)) {
+          matchCount++;
+          colMap[norm] = c;
+        }
+      }
+
+      // Need at least 2 recognized headers to consider it a header row
+      if (matchCount >= 2) {
+        return _XlsxHeaderInfo(headerRow: r, columns: colMap);
+      }
+    }
+    return null;
+  }
+
+  /// Parse xlsx using detected header positions.
+  ImportPreview _parseHeaderBasedXlsx(
+    List<List<Data?>> rows,
+    _XlsxHeaderInfo info,
+  ) {
+    final idx = info.columns;
+
+    // Resolve columns using synonyms (same logic as CSV/HTML)
+    final nameCol = _resolveCol(idx, [
+      'name',
+      'subscriber_name',
+      'customer_name',
+      'customername',
+    ]);
+    final vcCol = _resolveCol(idx, [
+      'stb_number',
+      'stbnumber',
+      'vc_number',
+      'vcnumber',
+      'vc_card',
+      'customer_nbr',
+      'vc_no',
+      'vcno',
+      'vc',
+    ]);
+    final areaCol = _resolveCol(idx, [
+      'area',
+      'address',
+      'address3',
+      'location',
+    ]);
+    final statusCol = _resolveCol(idx, ['status', 'is_active', 'active']);
+    final rentCol = _resolveCol(idx, [
+      'amount',
+      'monthly_rent',
+      'monthlyrent',
+      'rent',
+      'monthly_amount',
+    ]);
+    final dueCol = _resolveCol(idx, [
+      'due',
+      'previous_due',
+      'prev_due',
+      'balance',
+    ]);
+    final accountIdCol = _resolveCol(idx, ['account_id', 'accountid']);
+    final usernameCol = _resolveCol(idx, ['username', 'user_name']);
+    final phoneCol = _resolveCol(idx, ['phone', 'mobile', 'contact']);
+
+    _log.d(
+      'Column mapping: name=$nameCol, vc=$vcCol, area=$areaCol, '
+      'status=$statusCol, rent=$rentCol, due=$dueCol',
+    );
+
+    if (nameCol == null && vcCol == null) {
+      _log.w('No name or VC column found in header-based xlsx');
+      return ImportPreview(format: ImportFormat.unknown, records: []);
+    }
+
+    final records = <ImportRecord>[];
+    int skipped = 0;
+
+    for (int i = info.headerRow + 1; i < rows.length; i++) {
+      final row = rows[i];
+
+      final name = _cleanName(_str(row, nameCol ?? -1));
+      final vc = _cleanVc(vcCol != null ? _vcStr(row, vcCol) : null);
+      if (name == null && vc == null) {
+        skipped++;
+        continue;
+      }
+
+      final statusStr = statusCol != null ? _str(row, statusCol) : null;
+      final rent = rentCol != null ? _num(row, rentCol) : null;
+      final due = dueCol != null ? _num(row, dueCol) : null;
+
+      // Log first 3 for debugging
+      if (records.length < 3) {
+        _log.d(
+          'Row[$i]: name="$name", vc="$vc", '
+          'area="${areaCol != null ? _str(row, areaCol) : null}", '
+          'rent=$rent, due=$due',
+        );
+      }
+
+      records.add(
+        ImportRecord(
+          name: name,
+          vc: vc,
+          area: areaCol != null ? _str(row, areaCol) : null,
+          rent: rent,
+          prevDue: due,
+          isActive: statusStr != null
+              ? statusStr.toUpperCase() == 'ACTIVE'
+              : null,
+          accountId: accountIdCol != null ? _str(row, accountIdCol) : null,
+          username: usernameCol != null ? _str(row, usernameCol) : null,
+          phone: phoneCol != null ? _str(row, phoneCol) : null,
+        ),
+      );
+    }
+
+    _log.i(
+      'Header-based xlsx parse: ${records.length} records, skipped=$skipped',
+    );
+
+    return ImportPreview(
+      format: ImportFormat.totalList,
+      records: records,
+      sourceHeaders: rows[info.headerRow]
+          .map((c) => _cellRawString(c?.value) ?? '')
+          .toList(),
+    );
+  }
+
+  /// Book1 positional layout (hardcoded column positions).
+  ImportPreview _parseBook1PositionalXlsx(List<List<Data?>> rows) {
     // Log header row if available
     if (rows.length > 2) {
       final headerRow = rows[2];
