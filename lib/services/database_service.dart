@@ -488,6 +488,19 @@ class DatabaseService {
     return Payment.fromMap(maps.first);
   }
 
+  /// Returns the set of subscriber IDs that have a payment recorded for
+  /// the given [year]/[month].
+  Future<Set<int>> getPaidSubscriberIds(int year, int month) async {
+    final db = await database;
+    final rows = await db.query(
+      'payments',
+      columns: ['subscriber_id'],
+      where: 'year = ? AND month = ?',
+      whereArgs: [year, month],
+    );
+    return rows.map((r) => r['subscriber_id'] as int).toSet();
+  }
+
   Future<void> deletePayment(int id) async {
     final db = await database;
     await db.delete('payments', where: 'id = ?', whereArgs: [id]);
