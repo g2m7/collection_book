@@ -1,0 +1,7 @@
+# Copy to android/key.properties and replace every placeholder locally.
+# Relative storeFile paths resolve from the android/ directory (the root Gradle project).
+# Keep the real properties file and keystore out of version control.
+storeFile=collection-book-upload-keystore.jks
+storePassword=REPLACE_WITH_KEYSTORE_PASSWORD
+keyAlias=REPLACE_WITH_KEY_ALIAS
+keyPassword=REPLACE_WITH_KEY_PASSWORD

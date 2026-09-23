@@ -5,6 +5,8 @@ import '../models/subscriber.dart';
 import '../models/payment.dart';
 import '../services/database_service.dart';
 import '../services/app_mode_service.dart';
+import '../services/receipt_settings_service.dart';
+import '../services/whatsapp_receipt_service.dart';
 
 class RecordPaymentScreen extends StatefulWidget {
   final int? subscriberId;
@@ -27,6 +29,8 @@ class RecordPaymentScreen extends StatefulWidget {
 class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
   final _db = DatabaseService();
   final _formKey = GlobalKey<FormState>();
+  final _receiptSettings = ReceiptSettingsService();
+  final _receiptService = WhatsAppReceiptService();
   final _amountController = TextEditingController();
   final _adjustmentController = TextEditingController();
   final _noteController = TextEditingController();
@@ -229,9 +233,10 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
     return _dueBeforePayment + adjustment - amount;
   }
 
-  Future<void> _save() async {
+  Future<void> _save({bool sendReceipt = false}) async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedSubscriber == null) {
+    final subscriber = _selectedSubscriber;
+    if (subscriber == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a subscriber')),
       );
@@ -241,7 +246,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
     setState(() => _saving = true);
 
     final payment = Payment(
-      subscriberId: _selectedSubscriber!.id!,
+      subscriberId: subscriber.id!,
       year: _year,
       month: _month,
       amountPaid: double.tryParse(_amountController.text) ?? 0,
@@ -251,19 +256,81 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
           : null,
     );
 
-    await _db.insertOrUpdatePayment(payment);
-
-    setState(() => _saving = false);
-
-    if (mounted) {
+    try {
+      await _db.insertOrUpdatePayment(payment);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Payment recorded for ${_selectedSubscriber!.name}'),
-          backgroundColor: const Color(0xFF2E7D32),
-        ),
+        SnackBar(content: Text('Payment could not be saved: $error')),
       );
-      Navigator.pop(context);
+      return;
     }
+
+    if (!mounted) return;
+
+    if (!sendReceipt) {
+      setState(() => _saving = false);
+      _showSavedAndClose('Payment recorded for ${subscriber.name}');
+      return;
+    }
+
+    final normalizedPhone = WhatsAppReceiptService.normalizeIndianPhone(
+      subscriber.phone,
+    );
+    if (normalizedPhone == null) {
+      setState(() => _saving = false);
+      _showSavedAndClose(
+        'Payment saved, but receipt was not sent. Add a valid WhatsApp phone '
+        'number to this subscriber, then use Send Receipt on the payment.',
+        isError: true,
+      );
+      return;
+    }
+
+    try {
+      final referralCode = await _receiptSettings.getReferralCode();
+      final message = WhatsAppReceiptService.buildReceiptText(
+        organizationName: _receiptSettings.businessNameNotifier.value,
+        subscriber: subscriber,
+        payment: payment,
+        balanceAfterPayment: _projectedDueAfterSave(),
+        language: _receiptSettings.language,
+        referralCode: referralCode,
+      );
+      final result = await _receiptService.launch(
+        phone: normalizedPhone,
+        message: message,
+      );
+      if (!mounted) return;
+      setState(() => _saving = false);
+      _showSavedAndClose(
+        result.usedWebFallback
+            ? 'Payment saved. Review the receipt in your browser, then send it.'
+            : 'Payment saved. Review the receipt in WhatsApp, then tap Send.',
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      _showSavedAndClose(
+        'Payment saved, but WhatsApp could not be opened: $error '
+        'The payment was not duplicated.',
+        isError: true,
+      );
+    }
+  }
+
+  void _showSavedAndClose(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError
+            ? const Color(0xFFC62828)
+            : const Color(0xFF2E7D32),
+        duration: const Duration(seconds: 5),
+      ),
+    );
+    Navigator.pop(context);
   }
 
   @override
@@ -364,8 +431,9 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                                     'Paid',
                                     style: TextStyle(
                                       fontSize: 11,
-                                      color: const Color(0xFF2E7D32)
-                                          .withAlpha(180),
+                                      color: const Color(
+                                        0xFF2E7D32,
+                                      ).withAlpha(180),
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -666,7 +734,9 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                   SizedBox(
                     height: 52,
                     child: ElevatedButton(
-                      onPressed: _saving ? null : _save,
+                      onPressed: _saving
+                          ? null
+                          : () => _save(sendReceipt: true),
                       child: _saving
                           ? const SizedBox(
                               width: 20,
@@ -676,11 +746,15 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : Text(
-                              _existingPayment != null
-                                  ? 'Update Payment'
-                                  : 'Save Payment',
-                            ),
+                          : const Text('Save & Send Receipt'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 48,
+                    child: OutlinedButton(
+                      onPressed: _saving ? null : _save,
+                      child: const Text('Save Only'),
                     ),
                   ),
 
@@ -710,9 +784,9 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                             ],
                           ),
                         );
-                        if (confirmed != true || !mounted) return;
+                        if (confirmed != true || !context.mounted) return;
                         await _db.deletePayment(_existingPayment!.id!);
-                        if (mounted) {
+                        if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Payment deleted')),
                           );

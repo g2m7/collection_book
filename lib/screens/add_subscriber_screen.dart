@@ -6,6 +6,7 @@ import '../models/area.dart';
 import '../models/subscriber.dart';
 import '../services/database_service.dart';
 import '../services/app_mode_service.dart';
+import '../services/whatsapp_receipt_service.dart';
 
 class AddSubscriberScreen extends StatefulWidget {
   final int? subscriberId;
@@ -226,19 +227,35 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                       spellCheckConfiguration:
                           const SpellCheckConfiguration.disabled(),
                     ),
-                    const SizedBox(height: 16),
-                    _label('Phone'),
-                    TextFormField(
-                      controller: _phoneController,
-                      decoration: const InputDecoration(
-                        hintText: 'Mobile number…',
-                      ),
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      spellCheckConfiguration:
-                          const SpellCheckConfiguration.disabled(),
-                    ),
                   ],
+
+                  const SizedBox(height: 16),
+                  _label('WhatsApp Phone'),
+                  TextFormField(
+                    controller: _phoneController,
+                    decoration: const InputDecoration(
+                      hintText: 'Mobile number for receipts…',
+                    ),
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) return null;
+                      if (WhatsAppReceiptService.normalizeIndianPhone(value) !=
+                          null) {
+                        return null;
+                      }
+                      final existingPhone = _existing?.phone?.trim() ?? '';
+                      if (_isEditing && value.trim() == existingPhone) {
+                        // Preserve a pre-existing imported value until the
+                        // operator changes it; newly entered values must be
+                        // valid Indian mobile numbers.
+                        return null;
+                      }
+                      return 'Enter a valid Indian mobile number';
+                    },
+                    spellCheckConfiguration:
+                        const SpellCheckConfiguration.disabled(),
+                  ),
 
                   const SizedBox(height: 16),
                   _label('Monthly Rent *'),

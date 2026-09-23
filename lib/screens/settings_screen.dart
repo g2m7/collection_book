@@ -7,6 +7,7 @@ import '../models/area.dart';
 import '../services/database_service.dart';
 import '../services/backup_service.dart';
 import '../services/app_mode_service.dart';
+import '../services/receipt_settings_service.dart';
 import 'import_wizard_screen.dart';
 import 'import_history_screen.dart';
 
@@ -21,8 +22,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _db = DatabaseService();
   final _backup = BackupService();
   final _modeService = AppModeService();
+  final _receiptSettings = ReceiptSettingsService();
   List<Area> _areas = [];
   DateTime? _lastBackup;
+  String _referralCode = '';
   bool _loading = true;
 
   @override
@@ -43,9 +46,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadData() async {
     final areas = await _db.getAreas();
     final lastBackup = await _backup.getLastBackupTime();
+    await _receiptSettings.init();
+    final referralCode = await _receiptSettings.getReferralCode();
+    if (!mounted) return;
     setState(() {
       _areas = areas;
       _lastBackup = lastBackup;
+      _referralCode = referralCode;
       _loading = false;
     });
   }
@@ -103,6 +110,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     'Switching mode shows only that service\'s data.',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
+                ),
+
+                const Divider(height: 1),
+
+                // ---- Receipts ----
+                _sectionHeader('WhatsApp Receipts'),
+                _tile(
+                  icon: PhosphorIcons.translate(PhosphorIconsStyle.bold),
+                  title: 'Receipt Language',
+                  subtitle: _receiptSettings.language.label,
+                  onTap: _chooseReceiptLanguage,
+                ),
+                _tile(
+                  icon: PhosphorIcons.buildings(PhosphorIconsStyle.bold),
+                  title: 'Business Name',
+                  subtitle: _receiptSettings.businessNameNotifier.value,
+                  onTap: _editBusinessName,
+                ),
+                _tile(
+                  icon: PhosphorIcons.link(PhosphorIconsStyle.bold),
+                  title: 'Anonymous Referral Code',
+                  subtitle: _referralCode,
                 ),
 
                 const Divider(height: 1),
@@ -217,6 +246,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
     );
+  }
+
+  Future<void> _chooseReceiptLanguage() async {
+    final selected = await showDialog<ReceiptLanguage>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Receipt Language'),
+        children: [
+          RadioGroup<ReceiptLanguage>(
+            groupValue: _receiptSettings.language,
+            onChanged: (value) => Navigator.pop(context, value),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: ReceiptLanguage.values
+                  .map(
+                    (language) => RadioListTile<ReceiptLanguage>(
+                      value: language,
+                      title: Text(language.label),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (selected == null) return;
+    await _receiptSettings.setLanguage(selected);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _editBusinessName() async {
+    final initialName = _receiptSettings.businessNameNotifier.value;
+    var editedName = initialName;
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Business Name'),
+        content: TextFormField(
+          initialValue: initialName,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            hintText: 'Shown on customer receipts',
+          ),
+          onChanged: (value) => editedName = value,
+          onFieldSubmitted: (value) => Navigator.pop(context, value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, editedName),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (name == null) return;
+    await _receiptSettings.setBusinessName(name);
+    if (mounted) setState(() {});
   }
 
   void _openImportWizard(String serviceType) {

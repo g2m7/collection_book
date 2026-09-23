@@ -10,11 +10,13 @@ import 'screens/import_wizard_screen.dart';
 import 'screens/import_history_screen.dart';
 import 'services/database_service.dart';
 import 'services/app_mode_service.dart';
+import 'services/receipt_settings_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DatabaseService().database;
   await AppModeService().init();
+  await ReceiptSettingsService().init();
   runApp(const CollectionBookApp());
 }
 

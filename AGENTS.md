@@ -1,170 +1,143 @@
 # AGENTS.md
 
-Guidance for coding agents working in `ledger` (Flutter app).
+Canonical repository contract for the Collection Book Flutter app and its additive Bun/Cloudflare monorepo. `agent.md` is only a pointer to this file.
 
-## Repository Overview
+## Repository Map
 
-- Stack: Flutter (Dart 3.9), sqflite, shared_preferences, file imports (`excel`, `html`).
-- App purpose: subscriber/payment ledger for TV and Internet services.
-- Main directories:
-  - `lib/models` data models (`Subscriber`, `Payment`, `Area`)
-  - `lib/services` DB/business services (`DatabaseService`, `ImportService`, etc.)
-  - `lib/screens` UI screens and workflows
-  - `test` Flutter tests
+| Path | Scope |
+| --- | --- |
+| `lib/`, `test/`, `assets/`, `pubspec.yaml` | Root Flutter application and tests |
+| `android/`, `ios/` | Root Flutter platform projects |
+| `packages/contracts/` | Shared TypeScript domain contracts and constants |
+| `services/` | Deployable services; `services/cbk-edge/` is the Worker |
+| `docs/plans/<plan-name>/` | One directory and `plan.md` per plan |
+| `product.md` | Product requirements and source product information |
+| `.github/workflows/ci.yml` | Independent Flutter and Bun verification jobs |
 
-## Rule Sources (Cursor/Copilot)
+The Flutter app stays at repository root. Do not move `lib/`, `test/`, `android/`, `ios/`, `assets/`, `pubspec.yaml`, or platform projects into a workspace package.
 
-- `.cursorrules`: not found
-- `.cursor/rules/`: not found
-- `.github/copilot-instructions.md`: not found
+## Non-Negotiable Tooling and Planning Rules
 
-If these files are later added, treat them as higher-priority repository rules.
+1. **Bun only for TypeScript tooling:** use `bun` and `bunx`. Never use `npm`, `npx`, Yarn, or pnpm. Bun is pinned to 1.3.4 in the root manifest and CI.
+2. **Dedicated plan directories:** every feature or architecture plan lives at `docs/plans/<descriptive-plan-name>/` with a primary `plan.md` or `README.md`. Never add a loose plan directly under `docs/` or `docs/plans/`.
+3. **Update plans honestly:** mark only verified implementation complete. Keep deployment, DNS, secrets, signing fingerprints, and manual smoke checks pending until performed.
+4. **Focused changes:** preserve unrelated work. Do not stash, reset, broadly rewrite, stage, or commit unless the user explicitly requests it.
+5. **No implicit architecture expansion:** do not add Convex, payments, telemetry ingestion, D1, outbound tooling, or other planned systems without an approved plan/task.
 
-## Setup Commands
+## Setup and Verification
 
-- Install deps:
-  - `flutter pub get`
-- Check Flutter environment:
-  - `flutter doctor -v`
-- Clean build artifacts when needed:
-  - `flutter clean && flutter pub get`
+### Flutter
 
-## Run / Build Commands
+- Install dependencies: `flutter pub get`
+- Environment: `flutter doctor -v`
+- Format check: `dart format --output=none --set-exit-if-changed lib test`
+- Analyze: `flutter analyze`
+- Tests: `flutter test`
+- Debug APK: `flutter build apk --debug`
+- Run: `flutter run` (or `flutter run -d <device_id>`)
 
-- Run app (default device):
-  - `flutter run`
-- Run on a specific device:
-  - `flutter devices`
-  - `flutter run -d <device_id>`
-- Debug/profile/release:
-  - `flutter run --debug`
-  - `flutter run --profile`
-  - `flutter run --release`
-- Android build:
-  - `flutter build apk`
-  - `flutter build appbundle`
-- iOS build:
-  - `flutter build ios`
+Before completing an affected Flutter task, run the targeted tests plus `dart format` and `flutter analyze`. Keep documentation synchronized with behavior changes. Production Android release builds require real signing properties from ignored `android/key.properties`; relative `storeFile` values resolve from the `android/` root Gradle-project directory, and the debug signing key must never be used for a release artifact.
 
-## Lint / Format / Analyze
+### Bun and Worker
 
-- Analyze project:
-  - `flutter analyze`
-- Format all Dart files:
-  - `dart format .`
-- Optional strict check before committing:
-  - `dart format --output=none --set-exit-if-changed .`
-  - `flutter analyze`
+From the repository root:
 
-## Test Commands
+- Install workspace dependencies: `bun install`
+- Format: `bun run format`
+- Format check: `bun run format:check`
+- Typecheck: `bun run typecheck`
+- Tests: `bun test`
+- Worker dry-run build: `bun run build:worker`
+- All Bun gates: `bun run verify:bun`
+- All repository gates: `bun run verify:all`
 
-- Run all tests:
-  - `flutter test`
-- Run a single test file:
-  - `flutter test test/widget_test.dart`
-- Run a single test by name pattern:
-  - `flutter test --plain-name "test name text"`
-- Run a single test in a single file (most targeted):
-  - `flutter test test/widget_test.dart --plain-name "test name text"`
-- Expanded output:
-  - `flutter test -r expanded`
+The Wrangler dry-run must not deploy or change DNS. Disable Wrangler client metrics in local/CI commands where the tooling supports it.
 
-## Code Style and Conventions
+## Flutter Conventions
 
-Follow `flutter_lints` via `analysis_options.yaml`.
+Follow `flutter_lints` through `analysis_options.yaml`.
 
 ### Imports
 
-- Prefer import grouping order:
-  1. Dart SDK imports (`dart:*`)
-  2. Package imports (`package:*`)
-  3. Relative app imports (`../...`)
-- Keep imports minimal; remove unused imports.
+Use this order:
 
-### Formatting
+1. Dart SDK (`dart:*`)
+2. Packages (`package:*`)
+3. Relative application files
 
-- Run `dart format .` after edits.
-- Keep lines readable; trust formatter for wrapping.
-- Prefer trailing commas in multiline widget constructors.
+Keep imports minimal.
 
-### Types and Null Safety
+### Types and Naming
 
-- Use explicit types for public APIs and model fields.
-- Use `final` by default; `var` only when type is obvious and mutable.
-- Keep nullability intentional (`String?` only when truly optional).
-- Avoid dynamic unless necessary (legacy areas may still contain it).
+- Public APIs and model fields use explicit types.
+- Prefer `final`; use `var` only when the type is obvious and mutable.
+- Nullability must be intentional.
+- Types use `PascalCase`; methods, variables, and fields use `lowerCamelCase`; private members use `_` prefixes.
+- Existing project enum values use lower camel case.
 
-### Naming
+### UI
 
-- Types: `PascalCase` (`ImportService`, `SettingsScreen`)
-- Methods/variables/fields: `lowerCamelCase`
-- Private members: leading underscore (`_loadData`, `_db`)
-- Constants: `lowerCamelCase` with `const` (project style), not SCREAMING_SNAKE.
-- Enum values: lowerCamel (`tv`, `fiber`).
+- Keep widgets small and composable.
+- Use `const` where possible.
+- Check `mounted` after awaits before navigation or UI updates.
+- Keep SnackBars and dialogs concise and actionable.
+- Use trailing commas in multiline constructors.
 
-### UI Patterns
+### Data and Services
 
-- Keep widgets small and composable; extract repeated UI into helper widgets.
-- Use `const` constructors/widgets wherever possible.
-- In async UI actions, check `mounted` before navigation/snackbar updates.
-- Keep copy concise and action-oriented in SnackBars/dialogs.
-
-### Service and Data Layer Patterns
-
-- `DatabaseService` is a singleton; reuse it instead of creating new DB abstractions.
-- Use parameterized SQL (`?` placeholders + args), never string-interpolate untrusted input.
-- Preserve schema compatibility in migrations (`onUpgrade`) when changing tables.
-- Prefer transactional safety for multi-row imports/critical writes.
+- Reuse the singleton `DatabaseService`; do not introduce a second database abstraction.
+- Use parameterized SQL, never interpolated untrusted input.
+- Preserve migration compatibility in `onUpgrade`.
+- Use transactions for multi-row and critical writes.
+- Parse imports in isolation and never write during preview.
+- Validate required identifiers and amounts before database writes.
+- Service mode is `tv` or `fiber`; preserve service separation in queries, filters, imports, and upserts.
 
 ### Error Handling
 
-- Catch expected failures at boundaries (file parsing, DB writes, restore/import actions).
-- Show user-facing errors via SnackBar with clear action context.
-- Fail safe on import: if required data is missing/invalid, abort commit.
-- Do not swallow exceptions silently; propagate or surface meaningful messages.
+Catch expected failures at file/database/device boundaries and surface useful messages. Imports must abort on invalid required data rather than silently writing partial records. Never swallow errors without a meaningful boundary response.
 
-### Domain Constraints (Important)
+## TypeScript and Worker Conventions
 
-- Service mode is `tv` or `fiber` (`AppModeService`).
-- Treat cross-service data handling carefully in filters, imports, and upserts.
-- For import work, validate required identifiers and amounts before DB writes.
+### Packages and Services
+
+- Shared reusable TypeScript belongs under `packages/`.
+- Deployables belong under `services/`.
+- Worker entrypoints export a small, testable request handler plus the native Worker default export.
+- Keep Cloudflare platform APIs explicit and dependency-light.
+- Use the strict root `tsconfig.json`; package configs narrow the included files.
+- Keep deterministic tests in Bun (`bun:test`) near the owning package/service.
+
+### `services/cbk-edge/`
+
+- Canonical origin: `https://cbk.sarbaa.com`
+- Referral path: `/r/{six-character-code}`
+- Android package: `com.sarbaa.cbk`
+- Referral code contract: exactly six uppercase ASCII alphanumeric characters (`[A-Z0-9]{6}`)
+- Referral persistence is deferred. Valid clicks may log only `event`, `code`, `requestId`, and `timestamp`.
+- Never log or persist IP addresses, user agents, subscriber/operator data, referral cookies, or secrets.
+- Never invent an Android certificate fingerprint. Asset links remain `[]` without a valid configured SHA-256 fingerprint.
+- Keep `PLAY_STORE_URL` restricted to the HTTPS `play.google.com/store/apps/details` listing and always force the Play target package to `com.sarbaa.cbk`.
+- Do not deploy, create Cloudflare resources, or mutate DNS without explicit user approval.
 
 ## File-Specific Guidance
 
-- `lib/services/import_service.dart`
-  - Keep format detection deterministic.
-  - Keep parsing logic isolated per format.
-  - Avoid writing to DB during preview.
-- `lib/services/database_service.dart`
-  - Keep queries parameterized and migration-safe.
-  - Update both query and summary paths when changing service filtering rules.
-- `lib/screens/settings_screen.dart`
-  - Settings actions must handle long operations with visible progress.
+- `lib/services/import_service.dart`: keep format detection deterministic, parsing isolated, and preview side-effect free.
+- `lib/services/database_service.dart`: keep queries parameterized, migrations safe, and service-filter summary paths consistent.
+- `lib/screens/settings_screen.dart`: show visible progress for long settings operations.
+- `lib/services/whatsapp_receipt_service.dart`: preserve valid referral URL behavior and do not add unrelated receipt features.
+- `services/cbk-edge/src/`: keep routes bounded, cache-aware, method-aware, and protected by the shared security-header policy.
 
 ## Testing Guidance
 
-- Add/adjust tests for:
-  - import format detection
-  - required-field validation
-  - service filtering behavior
-  - DB migration-sensitive logic when schema changes
-- Prefer deterministic tests with small fixture inputs.
+Add or update tests for import format detection, required-field validation, service filtering, migration-sensitive logic, and backend route/security behavior. Prefer deterministic fixtures. The Worker suite must cover health, landing rendering, referral validation, cookie/redirect/referrer behavior, methods/404, asset links, headers, and injection resistance.
 
-## Agent Working Agreement
+## Pre-Completion Checklist
 
-- Make focused, minimal changes; avoid unrelated refactors.
-- Do not edit generated Flutter platform files unless task requires it.
-- Update docs when behavior or workflows change.
-- Before finishing, run at least:
-  - `dart format .`
-  - `flutter analyze`
-  - relevant `flutter test` command(s)
-
-## Quick Pre-PR Checklist
-
-- [ ] Code formatted
-- [ ] Analyzer clean
-- [ ] Tests pass (or explain gaps)
-- [ ] No debug prints left behind
-- [ ] User-facing errors are clear
-- [ ] Import/DB changes validated against service separation rules
+- [ ] Relevant code and documentation are formatted.
+- [ ] Flutter analyze and affected Flutter tests pass, or any pre-existing failure is identified.
+- [ ] Bun format check, typecheck, tests, and Worker dry-run pass.
+- [ ] `git diff --check` passes.
+- [ ] `git diff --cached` is empty unless the user explicitly authorized staging.
+- [ ] No debug prints, placeholder code, fake metrics, fake fingerprints, or secrets remain.
+- [ ] Plan checkboxes match actual implementation and external prerequisites remain pending.

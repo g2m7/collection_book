@@ -4,6 +4,8 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../models/subscriber.dart';
 import '../models/payment.dart';
 import '../services/database_service.dart';
+import '../services/receipt_settings_service.dart';
+import '../services/whatsapp_receipt_service.dart';
 import '../theme/app_theme.dart';
 
 class SubscriberDetailScreen extends StatefulWidget {
@@ -16,11 +18,15 @@ class SubscriberDetailScreen extends StatefulWidget {
 
 class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
   final _db = DatabaseService();
+  final _receiptSettings = ReceiptSettingsService();
+  final _receiptService = WhatsAppReceiptService();
   Subscriber? _subscriber;
   List<Payment> _payments = [];
   bool _loading = true;
   late int _year;
   double _yearStartDue = 0;
+  int? _sendingReceiptMonth;
+  bool _sendingReceipt = false;
 
   static const _monthShort = [
     'Jan',
@@ -225,6 +231,8 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
           _infoRow('Previous Due', _currencyFormat.format(sub.previousDue)),
           if (sub.vcNumber != null && sub.vcNumber!.isNotEmpty)
             _infoRow('VC Number', sub.vcNumber!),
+          if (sub.phone != null && sub.phone!.isNotEmpty)
+            _infoRow('WhatsApp Phone', sub.phone!),
         ],
       ),
     );
@@ -394,6 +402,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
                     textAlign: TextAlign.right,
                   ),
                 ),
+                SizedBox(width: 44),
               ],
             ),
           ),
@@ -503,6 +512,37 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
                         ),
                       ),
                     ),
+                    SizedBox(
+                      width: 44,
+                      child: payment == null
+                          ? null
+                          : IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints.tightFor(
+                                width: 40,
+                                height: 40,
+                              ),
+                              tooltip: 'Send WhatsApp receipt',
+                              onPressed: _sendingReceipt
+                                  ? null
+                                  : () => _sendReceipt(payment, runningDue),
+                              icon: _sendingReceiptMonth == month
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : Icon(
+                                      PhosphorIcons.whatsappLogo(
+                                        PhosphorIconsStyle.fill,
+                                      ),
+                                      size: 21,
+                                      color: const Color(0xFF25D366),
+                                    ),
+                            ),
+                    ),
                   ],
                 ),
               ),
@@ -511,6 +551,69 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _sendReceipt(Payment payment, double balanceAfterPayment) async {
+    final subscriber = _subscriber;
+    if (subscriber == null) return;
+
+    final phone = WhatsAppReceiptService.normalizeIndianPhone(subscriber.phone);
+    if (phone == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Receipt not sent. Add a valid Indian WhatsApp phone number to '
+            'this subscriber.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _sendingReceipt = true;
+      _sendingReceiptMonth = payment.month;
+    });
+    try {
+      final referralCode = await _receiptSettings.getReferralCode();
+      final message = WhatsAppReceiptService.buildReceiptText(
+        organizationName: _receiptSettings.businessNameNotifier.value,
+        subscriber: subscriber,
+        payment: payment,
+        balanceAfterPayment: balanceAfterPayment,
+        language: _receiptSettings.language,
+        referralCode: referralCode,
+      );
+      final result = await _receiptService.launch(
+        phone: phone,
+        message: message,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result.usedWebFallback
+                ? 'Review the receipt in your browser, then tap Send.'
+                : 'Review the receipt in WhatsApp, then tap Send.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('WhatsApp could not be opened: $error'),
+          backgroundColor: const Color(0xFFC62828),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _sendingReceipt = false;
+          _sendingReceiptMonth = null;
+        });
+      }
+    }
   }
 
   Future<void> _confirmDelete(Subscriber sub) async {

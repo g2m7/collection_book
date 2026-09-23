@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cbk-edge",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-01",
+  "routes": [
+    {
+      "pattern": "cbk.sarbaa.com",
+      "custom_domain": true,
+    },
+  ],
+  "observability": {
+    "enabled": false,
+  },
+}

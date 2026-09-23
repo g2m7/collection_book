@@ -1,0 +1,25 @@
+{
+  "name": "collection-book",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.4",
+  "workspaces": [
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "format": "prettier --write \"packages/**/*.{ts,json}\" \"services/**/*.{ts,json,jsonc}\" \"*.{json,jsonc}\" \".github/workflows/*.{yml,yaml}\"",
+    "format:check": "prettier --check \"packages/**/*.{ts,json}\" \"services/**/*.{ts,jsonc}\" \"*.{json,jsonc}\" \".github/workflows/*.{yml,yaml}\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "bun test",
+    "build:worker": "WRANGLER_SEND_METRICS=false bun run --cwd services/cbk-edge build",
+    "verify:bun": "bun run format:check && bun run typecheck && bun test && bun run build:worker",
+    "verify:all": "bun run verify:bun && dart format --output=none --set-exit-if-changed lib test && flutter analyze && flutter test"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.22",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3"
+  }
+}

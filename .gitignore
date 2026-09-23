@@ -44,6 +44,24 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Bun/TypeScript/Cloudflare tooling
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.wrangler/
+**/.wrangler/
+*.tsbuildinfo
+
+# Local environment and Wrangler values (examples remain trackable)
+.env
+.env.*
+!.env.example
+!.env.*.example
+**/.dev.vars
+**/.dev.vars.*
+!**/.dev.vars.example
+
 # Test data
 *.csv
 *.xls

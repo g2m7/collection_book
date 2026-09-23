@@ -1,0 +1,7 @@
+# Copy to .dev.vars for local development. Never commit real values.
+# Optional HTTPS Play Store listing. The package target is always com.sarbaa.cbk.
+PLAY_STORE_URL=https://play.google.com/store/apps/details?id=com.sarbaa.cbk
+
+# Optional real signing-certificate SHA-256 fingerprint, with or without colons.
+# The placeholder is intentionally invalid, so assetlinks returns [].
+ANDROID_SHA256_CERT_FINGERPRINT=REPLACE_WITH_REAL_SHA256_CERT_FINGERPRINT

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
 import '../models/area.dart';
@@ -9,6 +10,8 @@ import '../models/import_result.dart';
 import 'backup_service.dart';
 
 class DatabaseService {
+  static const databaseVersion = 7;
+
   static final DatabaseService _instance = DatabaseService._();
   factory DatabaseService() => _instance;
   DatabaseService._();
@@ -25,13 +28,22 @@ class DatabaseService {
     final path = p.join(dbPath, 'rent_ledger.db');
     return openDatabase(
       path,
-      version: 6,
+      version: databaseVersion,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
   }
 
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) {
+    return applyUpgrade(db, oldVersion, newVersion);
+  }
+
+  @visibleForTesting
+  static Future<void> applyUpgrade(
+    Database db,
+    int oldVersion,
+    int newVersion,
+  ) async {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE subscribers RENAME TO subscribers_old');
       await db.execute('''
@@ -81,6 +93,16 @@ class DatabaseService {
     if (oldVersion < 6) {
       await _createImportTables(db);
     }
+    if (oldVersion < 7) {
+      await createPhoneIndex(db);
+    }
+  }
+
+  @visibleForTesting
+  static Future<void> createPhoneIndex(DatabaseExecutor db) async {
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_subscribers_phone ON subscribers(phone)',
+    );
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -133,11 +155,12 @@ class DatabaseService {
     await db.execute(
       'CREATE INDEX idx_subscribers_area ON subscribers(area_id)',
     );
+    await createPhoneIndex(db);
 
     await _createImportTables(db);
   }
 
-  Future<void> _createImportTables(Database db) async {
+  static Future<void> _createImportTables(Database db) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS import_runs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

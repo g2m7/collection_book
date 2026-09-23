@@ -17,7 +17,7 @@ This document defines the exact formatting templates, field variables, and local
 | `{{PAID_AMT}}` | Amount Collected This Session | `₹350` |
 | `{{STATUS_LABEL}}`| Clean status indicator | `FULLY PAID` or `PARTIAL (DUE)` |
 | `{{REMAINING_DUE}}`| Remaining balance after payment | `₹0` or `₹150` |
-| `{{REF_URL}}` | Dynamic referral download link | `https://cbk.in/r/RAMESH88` |
+| `{{REF_URL}}` | Dynamic referral download link | `https://cbk.sarbaa.com/r/RAM882` |
 
 ---
 
@@ -128,7 +128,7 @@ This document defines the exact formatting templates, field variables, and local
 ## 3. Trojan Horse Attribution Link Structure
 
 When the operator opens the app for the first time, an anonymous, unique 6-character referral code is derived from their installation hash (or phone number):
-* Structure: `https://cbk.in/r/{OPERATOR_CODE}`
+* Structure: `https://cbk.sarbaa.com/r/{OPERATOR_CODE}`
 * Edge Redirection: The Cloudflare Edge shortener redirects to:
-  `https://play.google.com/store/apps/details?id=com.collectionbook.app&referrer=utm_source%3Dtrojan_receipt%26utm_medium%3Dwhatsapp%26utm_campaign%3D{OPERATOR_CODE}`
+  `https://play.google.com/store/apps/details?id=com.sarbaa.cbk&referrer=utm_source%3Dcbk_edge%26utm_medium%3Dreferral%26utm_campaign%3D{OPERATOR_CODE}`
 * Viral Loop Reward: When a referred operator installs and upgrades, the referring operator earns 1 month of free Starter tier extension.
