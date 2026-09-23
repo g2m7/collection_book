@@ -17,6 +17,7 @@ class AppTheme {
   static const unpaid = Color(0xFFC62828);
   static const overpaid = Color(0xFF1565C0);
   static const partial = Color(0xFFEF6C00);
+  static const pending = Color(0xFFE65100); // amber — dashboard KPI
   static const neutral = Color(0xFF616161);
 
   static Color dueColor(double due) {
@@ -26,10 +27,10 @@ class AppTheme {
   }
 
   static ThemeData themeFor(ServiceMode mode) {
-    final primary =
-        mode == ServiceMode.tv ? _primaryTV : _primaryFiber;
-    final primaryDark =
-        mode == ServiceMode.tv ? _primaryDarkTV : _primaryDarkFiber;
+    final primary = mode == ServiceMode.tv ? _primaryTV : _primaryFiber;
+    final primaryDark = mode == ServiceMode.tv
+        ? _primaryDarkTV
+        : _primaryDarkFiber;
 
     return ThemeData(
       useMaterial3: true,
@@ -67,8 +68,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: Colors.grey.shade300),
@@ -86,15 +89,11 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: Colors.white,
-          padding:
-              const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       textTheme: const TextTheme(

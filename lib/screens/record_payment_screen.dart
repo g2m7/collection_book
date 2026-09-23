@@ -4,15 +4,20 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../models/subscriber.dart';
 import '../models/payment.dart';
 import '../services/database_service.dart';
+import '../services/app_mode_service.dart';
 
 class RecordPaymentScreen extends StatefulWidget {
   final int? subscriberId;
   final String? subscriberName;
+  final int? initialMonth;
+  final int? initialYear;
 
   const RecordPaymentScreen({
     super.key,
     this.subscriberId,
     this.subscriberName,
+    this.initialMonth,
+    this.initialYear,
   });
 
   @override
@@ -34,6 +39,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
   bool _saving = false;
   Payment? _existingPayment;
   double _dueBeforePayment = 0;
+  Set<int> _paidSubscriberIds = {};
 
   static const _monthNames = [
     'January',
@@ -54,30 +60,21 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _month = now.month;
-    _year = now.year;
+    _month = widget.initialMonth ?? now.month;
+    _year = widget.initialYear ?? now.year;
     _loadSubscribers();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    final currentYear = DateTime.now().year;
-    if (args != null) {
-      if (args.containsKey('month')) _month = args['month'] as int;
-      if (args.containsKey('year')) {
-        final requestedYear = args['year'] as int;
-        _year = requestedYear < currentYear ? currentYear : requestedYear;
-      }
-    }
-  }
-
   Future<void> _loadSubscribers() async {
-    final subs = await _db.getSubscribers(isActive: true);
+    final serviceType = AppModeService().mode.key;
+    final subs = await _db.getSubscribers(
+      isActive: true,
+      serviceType: serviceType,
+    );
+    final paidIds = await _db.getPaidSubscriberIds(_year, _month);
     setState(() {
       _subscribers = subs;
+      _paidSubscriberIds = paidIds;
       if (widget.subscriberId != null) {
         _selectedSubscriber = subs.firstWhere(
           (s) => s.id == widget.subscriberId,
@@ -87,6 +84,12 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
       _loading = false;
     });
     _loadExistingPayment();
+  }
+
+  Future<void> _refreshPaidStatus() async {
+    final paidIds = await _db.getPaidSubscriberIds(_year, _month);
+    if (!mounted) return;
+    setState(() => _paidSubscriberIds = paidIds);
   }
 
   Future<void> _loadExistingPayment() async {
@@ -296,30 +299,101 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  DropdownButtonFormField<int>(
-                    initialValue: _selectedSubscriber?.id,
-                    decoration: const InputDecoration(
-                      hintText: 'Select subscriber…',
-                    ),
-                    isExpanded: true,
-                    items: _subscribers.map((s) {
-                      return DropdownMenuItem(
-                        value: s.id,
-                        child: Text(
-                          '${s.name}${s.aliasName != null ? ' (${s.aliasName})' : ''}',
-                          overflow: TextOverflow.ellipsis,
+                  Builder(
+                    builder: (context) {
+                      // Sort: unpaid first, paid last; preserve alpha within groups
+                      final sorted = List<Subscriber>.from(_subscribers)
+                        ..sort((a, b) {
+                          final aPaid = _paidSubscriberIds.contains(a.id);
+                          final bPaid = _paidSubscriberIds.contains(b.id);
+                          if (aPaid != bPaid) return aPaid ? 1 : -1;
+                          return a.name.compareTo(b.name);
+                        });
+
+                      return DropdownButtonFormField<int>(
+                        key: ValueKey('sub_${_month}_$_year'),
+                        initialValue: _selectedSubscriber?.id,
+                        decoration: const InputDecoration(
+                          hintText: 'Select subscriber…',
                         ),
+                        isExpanded: true,
+                        selectedItemBuilder: (context) {
+                          return sorted.map((s) {
+                            return Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                '${s.name}${s.aliasName != null ? ' (${s.aliasName})' : ''}',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList();
+                        },
+                        items: sorted.map((s) {
+                          final isPaid = _paidSubscriberIds.contains(s.id);
+                          return DropdownMenuItem(
+                            value: s.id,
+                            child: Row(
+                              children: [
+                                if (isPaid)
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 6),
+                                    child: Icon(
+                                      PhosphorIcons.checkCircle(
+                                        PhosphorIconsStyle.fill,
+                                      ),
+                                      size: 16,
+                                      color: const Color(0xFF2E7D32),
+                                    ),
+                                  ),
+                                Expanded(
+                                  child: Text(
+                                    '${s.name}${s.aliasName != null ? ' (${s.aliasName})' : ''}',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: isPaid
+                                          ? const Color(0xFF2E7D32)
+                                          : null,
+                                      fontWeight: isPaid
+                                          ? FontWeight.w400
+                                          : FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                if (isPaid)
+                                  Text(
+                                    'Paid',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: const Color(0xFF2E7D32)
+                                          .withAlpha(180),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (id) {
+                          setState(() {
+                            _selectedSubscriber = _subscribers.firstWhere(
+                              (s) => s.id == id,
+                            );
+                            // Clamp to subscriber's start date
+                            final sub = _selectedSubscriber!;
+                            final sY = sub.startYear;
+                            final sM = sub.startMonth ?? 1;
+                            if (sY != null) {
+                              if (_year < sY || (_year == sY && _month < sM)) {
+                                _year = sY;
+                                _month = sM;
+                              }
+                            }
+                          });
+                          _loadExistingPayment();
+                        },
+                        validator: (v) => v == null ? 'Required' : null,
                       );
-                    }).toList(),
-                    onChanged: (id) {
-                      setState(() {
-                        _selectedSubscriber = _subscribers.firstWhere(
-                          (s) => s.id == id,
-                        );
-                      });
-                      _loadExistingPayment();
                     },
-                    validator: (v) => v == null ? 'Required' : null,
                   ),
 
                   if (_selectedSubscriber != null) ...[
@@ -353,44 +427,82 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: DropdownButtonFormField<int>(
-                          initialValue: _month,
-                          decoration: const InputDecoration(),
-                          items: List.generate(12, (i) {
-                            return DropdownMenuItem(
-                              value: i + 1,
-                              child: Text(_monthNames[i]),
-                            );
-                          }),
-                          onChanged: (v) {
-                            setState(() => _month = v!);
-                            _loadExistingPayment();
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: DropdownButtonFormField<int>(
-                          initialValue: _year,
-                          decoration: const InputDecoration(),
-                          items: List.generate(2, (i) {
-                            final y = DateTime.now().year + i;
-                            return DropdownMenuItem(
-                              value: y,
-                              child: Text('$y'),
-                            );
-                          }),
-                          onChanged: (v) {
-                            setState(() => _year = v!);
-                            _loadExistingPayment();
-                          },
-                        ),
-                      ),
-                    ],
+                  Builder(
+                    builder: (context) {
+                      final sub = _selectedSubscriber;
+                      final startY = sub?.startYear;
+                      final startM = sub?.startMonth ?? 1;
+
+                      // Build year list — from subscriber start year (or 3yrs back) to next year
+                      final now = DateTime.now().year;
+                      final minYear = startY ?? (now - 3);
+                      final years = <int>{};
+                      for (int y = minYear; y <= now + 1; y++) {
+                        years.add(y);
+                      }
+                      years.add(_year);
+                      final sortedYears = years.toList()..sort();
+
+                      // Build month list — constrain if viewing the start year
+                      final firstMonth = (startY != null && _year == startY)
+                          ? startM
+                          : 1;
+                      final monthItems = List.generate(12 - firstMonth + 1, (
+                        i,
+                      ) {
+                        final m = firstMonth + i;
+                        return DropdownMenuItem(
+                          value: m,
+                          child: Text(_monthNames[m - 1]),
+                        );
+                      });
+
+                      return Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: DropdownButtonFormField<int>(
+                              key: ValueKey('month_${sub?.id}_$_year'),
+                              initialValue: _month,
+                              decoration: const InputDecoration(),
+                              items: monthItems,
+                              onChanged: (v) {
+                                setState(() => _month = v!);
+                                _refreshPaidStatus();
+                                _loadExistingPayment();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<int>(
+                              key: ValueKey('year_${sub?.id}'),
+                              initialValue: _year,
+                              decoration: const InputDecoration(),
+                              items: sortedYears.map((y) {
+                                return DropdownMenuItem(
+                                  value: y,
+                                  child: Text('$y'),
+                                );
+                              }).toList(),
+                              onChanged: (v) {
+                                setState(() {
+                                  _year = v!;
+                                  // If the month is now before the start, bump it
+                                  if (startY != null &&
+                                      _year == startY &&
+                                      _month < startM) {
+                                    _month = startM;
+                                  }
+                                });
+                                _refreshPaidStatus();
+                                _loadExistingPayment();
+                              },
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 20),
@@ -576,6 +688,29 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                     const SizedBox(height: 12),
                     TextButton.icon(
                       onPressed: () async {
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Delete Payment?'),
+                            content: Text(
+                              'This will permanently delete the payment for ${_monthNames[_month - 1]} $_year.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: const Color(0xFFC62828),
+                                ),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed != true || !mounted) return;
                         await _db.deletePayment(_existingPayment!.id!);
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(

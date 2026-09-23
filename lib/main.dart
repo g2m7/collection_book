@@ -6,6 +6,8 @@ import 'screens/subscriber_detail_screen.dart';
 import 'screens/record_payment_screen.dart';
 import 'screens/add_subscriber_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/import_wizard_screen.dart';
+import 'screens/import_history_screen.dart';
 import 'services/database_service.dart';
 import 'services/app_mode_service.dart';
 
@@ -13,11 +15,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DatabaseService().database;
   await AppModeService().init();
-  runApp(const RentLedgerApp());
+  runApp(const CollectionBookApp());
 }
 
-class RentLedgerApp extends StatelessWidget {
-  const RentLedgerApp({super.key});
+class CollectionBookApp extends StatelessWidget {
+  const CollectionBookApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +34,8 @@ class RentLedgerApp extends StatelessWidget {
           routes: {
             '/subscribers': (context) => const SubscriberListScreen(),
             '/settings': (context) => const SettingsScreen(),
+            '/import-wizard': (context) => const ImportWizardScreen(),
+            '/import-history': (context) => const ImportHistoryScreen(),
           },
           onGenerateRoute: (settings) {
             if (settings.name == '/subscriber-detail') {
@@ -46,15 +50,16 @@ class RentLedgerApp extends StatelessWidget {
                 builder: (context) => RecordPaymentScreen(
                   subscriberId: args?['subscriberId'] as int?,
                   subscriberName: args?['subscriberName'] as String?,
+                  initialMonth: args?['month'] as int?,
+                  initialYear: args?['year'] as int?,
                 ),
               );
             }
             if (settings.name == '/add-subscriber') {
               final sub = settings.arguments;
               return MaterialPageRoute(
-                builder: (context) => AddSubscriberScreen(
-                  subscriberId: sub as int?,
-                ),
+                builder: (context) =>
+                    AddSubscriberScreen(subscriberId: sub as int?),
               );
             }
             return null;

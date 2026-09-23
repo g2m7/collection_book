@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
@@ -6,7 +7,8 @@ import '../models/area.dart';
 import '../services/database_service.dart';
 import '../services/backup_service.dart';
 import '../services/app_mode_service.dart';
-import '../services/import_service.dart';
+import 'import_wizard_screen.dart';
+import 'import_history_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -98,9 +100,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
                   child: Text(
-                    'Switching mode shows only that service\'s data. Subscribers marked "Both" appear in either mode.',
+                    'Switching mode shows only that service\'s data.',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
+                ),
+
+                const Divider(height: 1),
+
+                // ---- Import Center ----
+                _sectionHeader('Import Center'),
+                _tile(
+                  icon: PhosphorIcons.televisionSimple(PhosphorIconsStyle.bold),
+                  title: 'Import TV Subscribers',
+                  subtitle: 'Import from spreadsheet into Cable TV',
+                  onTap: () => _openImportWizard('tv'),
+                ),
+                _tile(
+                  icon: PhosphorIcons.globeHemisphereWest(
+                    PhosphorIconsStyle.bold,
+                  ),
+                  title: 'Import Internet Subscribers',
+                  subtitle: 'Import from spreadsheet into Internet/Fiber',
+                  onTap: () => _openImportWizard('fiber'),
+                ),
+                _tile(
+                  icon: PhosphorIcons.clockCounterClockwise(
+                    PhosphorIconsStyle.bold,
+                  ),
+                  title: 'Import History',
+                  subtitle: 'View past imports and error details',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ImportHistoryScreen(),
+                    ),
+                  ).then((_) => _loadData()),
                 ),
 
                 const Divider(height: 1),
@@ -127,12 +161,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   subtitle: 'Pick a backup file to restore',
                   onTap: _doRestore,
                 ),
-                _tile(
-                  icon: PhosphorIcons.fileXls(PhosphorIconsStyle.bold),
-                  title: 'Import Subscribers',
-                  subtitle: 'Import from Book1 xlsx or operator XLS report',
-                  onTap: _importSubscribers,
-                ),
                 const Divider(height: 1),
 
                 _sectionHeader('Areas'),
@@ -142,7 +170,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: a.name,
                     onTap: () => _editArea(a),
                     trailing: IconButton(
-                      icon: Icon(PhosphorIcons.trash(PhosphorIconsStyle.bold), size: 20),
+                      icon: Icon(
+                        PhosphorIcons.trash(PhosphorIconsStyle.bold),
+                        size: 20,
+                      ),
                       onPressed: () => _deleteArea(a),
                     ),
                   ),
@@ -166,12 +197,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _sectionHeader('About'),
                 _tile(
                   icon: PhosphorIcons.info(PhosphorIconsStyle.bold),
-                  title: 'Rent Ledger',
+                  title: 'Collection Book',
                   subtitle: 'Version 1.0.0',
                 ),
+
+                const Divider(height: 1),
+                _sectionHeader('Danger Zone'),
+                _tile(
+                  icon: PhosphorIcons.warning(PhosphorIconsStyle.bold),
+                  title: 'Reset App',
+                  subtitle: 'Delete all data and start fresh',
+                  onTap: _resetApp,
+                  trailing: Icon(
+                    PhosphorIcons.caretRight(PhosphorIconsStyle.bold),
+                    color: const Color(0xFFC62828),
+                  ),
+                ),
+                const SizedBox(height: 32),
               ],
             ),
     );
+  }
+
+  void _openImportWizard(String serviceType) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ImportWizardScreen(preselectedService: serviceType),
+      ),
+    ).then((_) => _loadData());
   }
 
   Widget _modeOption(
@@ -211,7 +265,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             if (selected)
-              Icon(PhosphorIcons.checkCircle(PhosphorIconsStyle.bold), color: primary, size: 20)
+              Icon(
+                PhosphorIcons.checkCircle(PhosphorIconsStyle.bold),
+                color: primary,
+                size: 20,
+              )
             else
               Icon(
                 PhosphorIcons.circle(PhosphorIconsStyle.bold),
@@ -253,7 +311,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ? Text(subtitle, style: const TextStyle(fontSize: 13))
           : null,
       trailing:
-          trailing ?? (onTap != null ? Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold)) : null),
+          trailing ??
+          (onTap != null
+              ? Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold))
+              : null),
       onTap: onTap,
     );
   }
@@ -345,152 +406,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     }
-  }
-
-  Future<void> _importSubscribers() async {
-    final picked = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['xlsx', 'xls'],
-    );
-    if (picked == null || picked.files.single.path == null) return;
-    final path = picked.files.single.path!;
-
-    if (!mounted) return;
-
-    // Show loading while parsing
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
-            Text('Reading file…'),
-          ],
-        ),
-      ),
-    );
-
-    ImportPreview preview;
-    try {
-      preview = await ImportService().preview(path);
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to read file: $e'),
-            backgroundColor: const Color(0xFFC62828),
-          ),
-        );
-      }
-      return;
-    }
-
-    if (!mounted) return;
-    Navigator.pop(context); // close loading dialog
-
-    if (preview.format == ImportFormat.unknown ||
-        preview.subscriberCount == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unrecognised file format or no data found.'),
-          backgroundColor: Color(0xFFC62828),
-        ),
-      );
-      return;
-    }
-
-    // Preview dialog
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Import Subscribers'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Format: ${preview.formatLabel}'),
-            const SizedBox(height: 8),
-            _previewRow('Subscribers', '${preview.subscriberCount}'),
-            if (preview.paymentCount > 0)
-              _previewRow('Payment records', '${preview.paymentCount}'),
-            const SizedBox(height: 12),
-            const Text(
-              'Existing subscribers matched by VC number will be updated. New ones will be added.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Import'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    // Run import
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
-            Text('Importing…'),
-          ],
-        ),
-      ),
-    );
-
-    try {
-      final result = await ImportService().commit(preview);
-      if (!mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Done — ${result.inserted} added, ${result.updated} updated'
-            '${result.payments > 0 ? ', ${result.payments} payments' : ''}.',
-          ),
-          backgroundColor: const Color(0xFF2E7D32),
-          duration: const Duration(seconds: 4),
-        ),
-      );
-      _loadData();
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Import failed: $e'),
-          backgroundColor: const Color(0xFFC62828),
-        ),
-      );
-    }
-  }
-
-  Widget _previewRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          Text('$label: ',
-              style: const TextStyle(fontWeight: FontWeight.w600)),
-          Text(value),
-        ],
-      ),
-    );
   }
 
   Future<void> _addArea() async {
@@ -585,5 +500,181 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _db.deleteArea(area.id!);
       _loadData();
     }
+  }
+
+  Future<void> _resetApp() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const _ResetConfirmationDialog(),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await _db.resetAllData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All data cleared. App has been reset.'),
+            backgroundColor: Color(0xFF2E7D32),
+          ),
+        );
+        // Navigate to home and clear the stack
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Reset failed: $e'),
+            backgroundColor: const Color(0xFFC62828),
+          ),
+        );
+      }
+    }
+  }
+}
+
+/// A dialog with a 10-second countdown timer before the user can confirm.
+class _ResetConfirmationDialog extends StatefulWidget {
+  const _ResetConfirmationDialog();
+
+  @override
+  State<_ResetConfirmationDialog> createState() =>
+      _ResetConfirmationDialogState();
+}
+
+class _ResetConfirmationDialogState extends State<_ResetConfirmationDialog> {
+  int _remainingSeconds = 10;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingSeconds <= 1) {
+        timer.cancel();
+      }
+      setState(() => _remainingSeconds--);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canConfirm = _remainingSeconds <= 0;
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      icon: Icon(
+        PhosphorIcons.warning(PhosphorIconsStyle.duotone),
+        size: 48,
+        color: const Color(0xFFC62828),
+      ),
+      title: const Text(
+        'Reset App?',
+        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFEBEE),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  PhosphorIcons.warning(PhosphorIconsStyle.bold),
+                  size: 20,
+                  color: const Color(0xFFC62828),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'This will permanently delete ALL data.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFB71C1C),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'All subscribers, payments, areas, and import history '
+            'will be erased. This action cannot be undone.\n\n'
+            'Make sure you have a backup before proceeding.',
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.5,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          if (!canConfirm) ...[
+            const SizedBox(height: 20),
+            SizedBox(
+              width: 56,
+              height: 56,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  CircularProgressIndicator(
+                    value: (10 - _remainingSeconds) / 10,
+                    strokeWidth: 4,
+                    backgroundColor: Colors.grey.shade200,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFFC62828),
+                    ),
+                  ),
+                  Center(
+                    child: Text(
+                      '$_remainingSeconds',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFC62828),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Please wait…',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text('Cancel', style: TextStyle(color: Colors.grey.shade600)),
+        ),
+        FilledButton(
+          onPressed: canConfirm ? () => Navigator.pop(context, true) : null,
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFC62828),
+            disabledBackgroundColor: Colors.grey.shade300,
+          ),
+          child: Text(
+            canConfirm ? 'Reset Everything' : 'Wait $_remainingSeconds…',
+          ),
+        ),
+      ],
+    );
   }
 }
