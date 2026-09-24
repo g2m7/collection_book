@@ -3,9 +3,11 @@ import 'dart:io';
 import 'package:excel/excel.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:logger/logger.dart';
+import 'package:sqflite/sqflite.dart';
 import '../models/import_result.dart';
 import '../models/import_run.dart';
 import 'database_service.dart';
+import 'analytics_service.dart';
 
 final _log = Logger(
   printer: PrettyPrinter(
@@ -57,7 +59,12 @@ class ImportPreview {
 }
 
 class ImportService {
-  final _db = DatabaseService();
+  final DatabaseService _db;
+  final AnalyticsService _analytics;
+
+  ImportService({DatabaseService? databaseService, AnalyticsService? analytics})
+    : _db = databaseService ?? DatabaseService(),
+      _analytics = analytics ?? AnalyticsService();
 
   // =========================================================================
   // 1) PREVIEW — parse file into in-memory records (no DB writes)
@@ -584,11 +591,17 @@ class ImportService {
     void Function(int current, int total)? onProgress,
   }) async {
     final db = await _db.database;
+    final stopwatch = Stopwatch()..start();
     int inserted = 0, updated = 0, payments = 0, rejected = 0, conflicts = 0;
     final errors = <ImportRowError>[];
     final startTime = DateTime.now().toIso8601String();
 
     await db.transaction((txn) async {
+      final subscriberCountBefore =
+          Sqflite.firstIntValue(
+            await txn.rawQuery('SELECT COUNT(*) FROM subscribers'),
+          ) ??
+          0;
       final total = preview.records.length;
 
       for (int i = 0; i < total; i++) {
@@ -713,18 +726,23 @@ class ImportService {
             ],
           );
           inserted++;
+          if (subscriberCountBefore == 0 && inserted == 1) {
+            await _analytics.insertFirstSubscriberEvent(txn, 'mso_import');
+          }
           payments += await _upsertPayments(txn, id, rec.payments);
         }
       }
     });
 
+    final importStatus = errors.isEmpty
+        ? 'success'
+        : (inserted + updated > 0 ? 'partial' : 'failed');
+
     // Persist import run metadata
     final run = ImportRun(
       fileName: fileName,
       serviceType: serviceType,
-      status: errors.isEmpty
-          ? 'success'
-          : (inserted + updated > 0 ? 'partial' : 'failed'),
+      status: importStatus,
       insertCount: inserted,
       updateCount: updated,
       rejectCount: rejected,
@@ -737,6 +755,19 @@ class ImportService {
     if (errors.isNotEmpty) {
       await _db.insertImportErrors(runId, errors);
     }
+    stopwatch.stop();
+
+    if (importStatus != 'failed') {
+      await _analytics.track('mso_file_imported', {
+        'service_type': serviceType,
+        'record_count': preview.records.length,
+        'mso_format': _telemetryFormat(preview.format),
+        'elapsed_ms': stopwatch.elapsedMilliseconds,
+        'inserted_count': inserted,
+        'updated_count': updated,
+        'payment_count': payments,
+      });
+    }
 
     return ImportCommitResult(
       inserted: inserted,
@@ -747,6 +778,14 @@ class ImportService {
       errors: errors,
     );
   }
+
+  static String _telemetryFormat(ImportFormat format) => switch (format) {
+    ImportFormat.book1 => 'book1',
+    ImportFormat.activePackages => 'active_packages',
+    ImportFormat.totalList => 'total_list',
+    ImportFormat.csv => 'csv',
+    ImportFormat.unknown => 'unknown',
+  };
 
   // =========================================================================
   // Book1 xlsx parser

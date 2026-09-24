@@ -8,7 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 void main() {
   setUpAll(sqfliteFfiInit);
 
-  test('v6 to v7 upgrade preserves phone data and adds the index', () async {
+  test('v6 to v8 upgrade preserves phone data and adds the index', () async {
     final tempDir = await Directory.systemTemp.createTemp(
       'ledger_receipt_migration_',
     );
@@ -69,5 +69,65 @@ void main() {
     expect(rows, hasLength(1));
     expect(rows.single['name'], 'Existing Customer');
     expect(rows.single['phone'], '+919876543210');
+  });
+
+  test('v7 to v8 migration creates a durable analytics queue', () async {
+    final tempDir = await Directory.systemTemp.createTemp(
+      'ledger_analytics_migration_',
+    );
+    addTearDown(() async {
+      if (await tempDir.exists()) await tempDir.delete(recursive: true);
+    });
+    final path = '${tempDir.path}/migration.db';
+
+    final v7 = await databaseFactoryFfi.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 7,
+        onCreate: (db, version) async {
+          await db.execute('CREATE TABLE marker (id INTEGER PRIMARY KEY)');
+          await db.insert('marker', {'id': 1});
+        },
+      ),
+    );
+    await v7.close();
+
+    final upgraded = await databaseFactoryFfi.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: DatabaseService.databaseVersion,
+        onUpgrade: DatabaseService.applyUpgrade,
+      ),
+    );
+    addTearDown(upgraded.close);
+    await DatabaseService.applyUpgrade(
+      upgraded,
+      7,
+      DatabaseService.databaseVersion,
+    );
+
+    final milestoneColumns = await upgraded.rawQuery(
+      'PRAGMA table_info(analytics_milestones)',
+    );
+    expect(
+      milestoneColumns.map((row) => row['name']),
+      containsAll(['milestone', 'created_at']),
+    );
+    final columns = await upgraded.rawQuery(
+      'PRAGMA table_info(analytics_events)',
+    );
+    expect(
+      columns.map((row) => row['name']),
+      containsAll([
+        'event_id',
+        'event_name',
+        'properties_json',
+        'created_at',
+        'attempt_count',
+        'next_attempt_at',
+        'last_error',
+      ]),
+    );
+    expect(await upgraded.query('marker'), hasLength(1));
   });
 }

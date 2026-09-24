@@ -64,7 +64,7 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disable-animations: true
-          script: patrol test
+          script: tool/run_patrol_android.sh
 
   bun:
     name: Bun and Worker checks

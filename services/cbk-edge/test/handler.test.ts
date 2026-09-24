@@ -14,7 +14,7 @@ afterEach(() => {
 
 describe("cbk-edge routes", () => {
   test("health returns only bounded service metadata", async () => {
-    const response = handleRequest(
+    const response = await handleRequest(
       new Request("https://cbk.sarbaa.com/health"),
     );
 
@@ -29,7 +29,9 @@ describe("cbk-edge routes", () => {
   });
 
   test("landing is self-contained, semantic, accessible, and secure", async () => {
-    const response = handleRequest(new Request("https://cbk.sarbaa.com/"));
+    const response = await handleRequest(
+      new Request("https://cbk.sarbaa.com/"),
+    );
     const html = await response.text();
 
     expect(response.status).toBe(200);
@@ -49,7 +51,7 @@ describe("cbk-edge routes", () => {
   });
 
   test("landing preserves a valid referral in the Google Play referrer", async () => {
-    const response = handleRequest(
+    const response = await handleRequest(
       new Request("https://cbk.sarbaa.com/?ref=AB12CD"),
     );
     const html = await response.text();
@@ -101,7 +103,7 @@ describe("cbk-edge routes", () => {
     const env: WorkerEnv = {
       PLAY_STORE_URL: 'javascript:alert("injection")',
     };
-    const response = handleRequest(
+    const response = await handleRequest(
       new Request(
         "https://cbk.sarbaa.com/?ref=%3Cscript%3Ealert(1)%3C%2Fscript%3E",
         { headers: { "User-Agent": "must-not-be-logged" } },
@@ -122,7 +124,7 @@ describe("cbk-edge routes", () => {
       logs.push(values);
     };
 
-    const response = handleRequest(
+    const response = await handleRequest(
       new Request("https://cbk.sarbaa.com/r/AB12CD?source=receipt"),
     );
     const setCookie = response.headers.get("Set-Cookie") ?? "";
@@ -157,9 +159,9 @@ describe("cbk-edge routes", () => {
 
   test.each(["ABC123", "I0O1IL", "ZZZZZZ"])(
     "accepts uppercase alphanumeric code %s",
-    (code) => {
+    async (code) => {
       console.log = spyOn(console, "log").mockImplementation(() => undefined);
-      const response = handleRequest(
+      const response = await handleRequest(
         new Request(`https://cbk.sarbaa.com/r/${code}`),
       );
 
@@ -170,13 +172,13 @@ describe("cbk-edge routes", () => {
 
   test.each(["ABC12", "ABC1234", "abc123", "../bad", "ABC%0D", "ABC%2F123"])(
     "rejects invalid referral %s without logging or a cookie",
-    (code) => {
+    async (code) => {
       const logs: unknown[][] = [];
       console.log = (...values: unknown[]) => {
         logs.push(values);
       };
 
-      const response = handleRequest(
+      const response = await handleRequest(
         new Request(`https://cbk.sarbaa.com/r/${code}`),
       );
 
@@ -187,7 +189,7 @@ describe("cbk-edge routes", () => {
   );
 
   test("unknown paths return bounded 404 responses", async () => {
-    const response = handleRequest(
+    const response = await handleRequest(
       new Request("https://cbk.sarbaa.com/not-a-route"),
     );
 
@@ -197,7 +199,7 @@ describe("cbk-edge routes", () => {
 
   test("unsupported methods return 405 with GET allowed", async () => {
     for (const method of ["POST", "PUT", "DELETE", "HEAD"]) {
-      const response = handleRequest(
+      const response = await handleRequest(
         new Request("https://cbk.sarbaa.com/", { method }),
       );
       expect(response.status).toBe(405);
@@ -211,7 +213,7 @@ describe("cbk-edge routes", () => {
       { ANDROID_SHA256_CERT_FINGERPRINT: "" },
       { ANDROID_SHA256_CERT_FINGERPRINT: "not-a-fingerprint" },
     ] satisfies WorkerEnv[]) {
-      const response = handleRequest(
+      const response = await handleRequest(
         new Request("https://cbk.sarbaa.com/.well-known/assetlinks.json"),
         env,
       );
@@ -221,7 +223,7 @@ describe("cbk-edge routes", () => {
   });
 
   test("assetlinks contains the package and only a valid configured SHA-256", async () => {
-    const response = handleRequest(
+    const response = await handleRequest(
       new Request("https://cbk.sarbaa.com/.well-known/assetlinks.json"),
       { ANDROID_SHA256_CERT_FINGERPRINT: fingerprint },
     );
@@ -242,12 +244,12 @@ describe("cbk-edge routes", () => {
 
   test("security headers apply to every response class", async () => {
     console.log = () => undefined;
-    const responses = [
+    const responses = await Promise.all([
       handleRequest(new Request("https://cbk.sarbaa.com/")),
       handleRequest(new Request("https://cbk.sarbaa.com/r/AB12CD")),
       handleRequest(new Request("https://cbk.sarbaa.com/missing")),
       handleRequest(new Request("https://cbk.sarbaa.com/", { method: "POST" })),
-    ];
+    ]);
 
     for (const response of responses) {
       expect(response.headers.get("Content-Security-Policy")).toContain(

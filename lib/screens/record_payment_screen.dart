@@ -7,6 +7,7 @@ import '../services/database_service.dart';
 import '../services/app_mode_service.dart';
 import '../services/receipt_settings_service.dart';
 import '../services/whatsapp_receipt_service.dart';
+import '../services/analytics_service.dart';
 import '../app_keys.dart';
 
 class RecordPaymentScreen extends StatefulWidget {
@@ -183,6 +184,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
+                    key: AppKeys.paymentClearDueApply,
                     onPressed: () => Navigator.pop(context, 'apply'),
                     icon: Icon(
                       PhosphorIcons.checkCircle(PhosphorIconsStyle.bold),
@@ -195,6 +197,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
+                    key: AppKeys.paymentClearDueApplyNote,
                     onPressed: () => Navigator.pop(context, 'apply_note'),
                     icon: Icon(
                       PhosphorIcons.notePencil(PhosphorIconsStyle.bold),
@@ -259,6 +262,10 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
 
     try {
       await _db.insertOrUpdatePayment(payment);
+      await AnalyticsService().track('payment_recorded', {
+        'service_type': subscriber.serviceType,
+        'has_adjustment': payment.adjustment != 0,
+      });
     } catch (error) {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -302,6 +309,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
       final result = await _receiptService.launch(
         phone: normalizedPhone,
         message: message,
+        serviceType: subscriber.serviceType,
       );
       if (!mounted) return;
       setState(() => _saving = false);
@@ -530,43 +538,49 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                         children: [
                           Expanded(
                             flex: 2,
-                            child: DropdownButtonFormField<int>(
-                              key: ValueKey('month_${sub?.id}_$_year'),
-                              initialValue: _month,
-                              decoration: const InputDecoration(),
-                              items: monthItems,
-                              onChanged: (v) {
-                                setState(() => _month = v!);
-                                _refreshPaidStatus();
-                                _loadExistingPayment();
-                              },
+                            child: KeyedSubtree(
+                              key: AppKeys.paymentMonth,
+                              child: DropdownButtonFormField<int>(
+                                key: ValueKey('month_${sub?.id}_$_year'),
+                                initialValue: _month,
+                                decoration: const InputDecoration(),
+                                items: monthItems,
+                                onChanged: (v) {
+                                  setState(() => _month = v!);
+                                  _refreshPaidStatus();
+                                  _loadExistingPayment();
+                                },
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: DropdownButtonFormField<int>(
-                              key: ValueKey('year_${sub?.id}'),
-                              initialValue: _year,
-                              decoration: const InputDecoration(),
-                              items: sortedYears.map((y) {
-                                return DropdownMenuItem(
-                                  value: y,
-                                  child: Text('$y'),
-                                );
-                              }).toList(),
-                              onChanged: (v) {
-                                setState(() {
-                                  _year = v!;
-                                  // If the month is now before the start, bump it
-                                  if (startY != null &&
-                                      _year == startY &&
-                                      _month < startM) {
-                                    _month = startM;
-                                  }
-                                });
-                                _refreshPaidStatus();
-                                _loadExistingPayment();
-                              },
+                            child: KeyedSubtree(
+                              key: AppKeys.paymentYear,
+                              child: DropdownButtonFormField<int>(
+                                key: ValueKey('year_${sub?.id}'),
+                                initialValue: _year,
+                                decoration: const InputDecoration(),
+                                items: sortedYears.map((y) {
+                                  return DropdownMenuItem(
+                                    value: y,
+                                    child: Text('$y'),
+                                  );
+                                }).toList(),
+                                onChanged: (v) {
+                                  setState(() {
+                                    _year = v!;
+                                    // If the month is now before the start, bump it
+                                    if (startY != null &&
+                                        _year == startY &&
+                                        _month < startM) {
+                                      _month = startM;
+                                    }
+                                  });
+                                  _refreshPaidStatus();
+                                  _loadExistingPayment();
+                                },
+                              ),
                             ),
                           ),
                         ],
@@ -768,6 +782,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                   if (_existingPayment != null) ...[
                     const SizedBox(height: 12),
                     TextButton.icon(
+                      key: AppKeys.paymentDelete,
                       onPressed: () async {
                         final confirmed = await showDialog<bool>(
                           context: context,

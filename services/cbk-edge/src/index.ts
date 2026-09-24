@@ -2,9 +2,18 @@ import {
   parseReferralCode,
   publicOrigin,
   referralCookieName,
+  telemetryBatchPath,
+  telemetryMaxCompressedBytes,
+  telemetryMaxEventsPerBatch,
+  type AnalyticsEngineBinding,
 } from "@collection-book/contracts";
 
 import { renderLandingPage } from "./landing";
+import {
+  readTelemetryJson,
+  telemetryBatchError,
+  validateTelemetryBatch,
+} from "./telemetry";
 
 const serviceName = "cbk-edge";
 const serviceVersion = "0.1.0";
@@ -13,6 +22,7 @@ const referralCookieMaxAge = 60 * 60 * 24 * 30;
 export interface WorkerEnv {
   PLAY_STORE_URL?: string;
   ANDROID_SHA256_CERT_FINGERPRINT?: string;
+  TELEMETRY?: AnalyticsEngineBinding;
 }
 
 export interface Worker {
@@ -81,9 +91,9 @@ function normalizeFingerprint(value: string | undefined): string | null {
   return compact.toUpperCase().match(/.{2}/gu)?.join(":") ?? null;
 }
 
-function methodNotAllowed(): Response {
+function methodNotAllowed(allow: "GET" | "POST" = "GET"): Response {
   return jsonResponse({ error: "method_not_allowed" }, 405, "no-store", {
-    Allow: "GET",
+    Allow: allow,
   });
 }
 
@@ -91,10 +101,85 @@ function notFound(): Response {
   return jsonResponse({ error: "not_found" }, 404, "no-store");
 }
 
-export function handleRequest(request: Request, env: WorkerEnv = {}): Response {
-  if (request.method !== "GET") return methodNotAllowed();
-
+export async function handleRequest(
+  request: Request,
+  env: WorkerEnv = {},
+): Promise<Response> {
   const url = new URL(request.url);
+
+  if (url.pathname === telemetryBatchPath) {
+    if (request.method !== "POST") return methodNotAllowed("POST");
+    const contentType = request.headers
+      .get("Content-Type")
+      ?.split(";", 1)[0]
+      ?.trim()
+      .toLowerCase();
+    if (contentType !== "application/json") {
+      return jsonResponse({ error: "content_type_required" }, 415, "no-store");
+    }
+    if (
+      request.headers.get("Content-Encoding")?.trim().toLowerCase() !== "gzip"
+    ) {
+      return jsonResponse({ error: "gzip_required" }, 415, "no-store");
+    }
+    const contentLength = Number(request.headers.get("Content-Length"));
+    if (
+      Number.isFinite(contentLength) &&
+      contentLength > telemetryMaxCompressedBytes
+    ) {
+      return jsonResponse(
+        { error: "compressed_body_too_large" },
+        413,
+        "no-store",
+      );
+    }
+    const read = await readTelemetryJson(request);
+    if ("error" in read) {
+      return jsonResponse(
+        { error: telemetryBatchError(read.error) },
+        read.error === "decompressed" ? 413 : 400,
+        "no-store",
+      );
+    }
+    if (
+      Array.isArray(read.json) &&
+      read.json.length > telemetryMaxEventsPerBatch
+    ) {
+      return jsonResponse({ error: "too_many_events" }, 413, "no-store");
+    }
+    const batch = validateTelemetryBatch(read.json);
+    if (batch === null) {
+      return jsonResponse({ error: "invalid_telemetry" }, 400, "no-store");
+    }
+    if (batch.events.length > telemetryMaxEventsPerBatch) {
+      return jsonResponse({ error: "too_many_events" }, 413, "no-store");
+    }
+    if (env.TELEMETRY === undefined) {
+      return jsonResponse({ error: "telemetry_unavailable" }, 503, "no-store", {
+        "Retry-After": "60",
+      });
+    }
+    try {
+      for (const event of batch.events) {
+        env.TELEMETRY.writeDataPoint({
+          indexes: [batch.client_id],
+          doubles: [event.timestamp],
+          blobs: [event.event_name, event.id, JSON.stringify(event.properties)],
+        });
+      }
+    } catch {
+      return jsonResponse({ error: "telemetry_unavailable" }, 503, "no-store", {
+        "Retry-After": "60",
+      });
+    }
+    return jsonResponse(
+      { accepted_event_ids: batch.events.map((event) => event.id) },
+      200,
+      "no-store",
+    );
+  }
+
+  if (request.method !== "GET") return methodNotAllowed();
 
   if (url.pathname === "/health") {
     return jsonResponse(
@@ -183,7 +268,7 @@ export function handleRequest(request: Request, env: WorkerEnv = {}): Response {
 }
 
 const worker: Worker = {
-  fetch: handleRequest,
+  fetch: (request, env) => handleRequest(request, env),
 };
 
 export default worker;

@@ -358,6 +358,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
                         if (_activeFilterCount > 0) ...[
                           const SizedBox(height: 8),
                           TextButton.icon(
+                            key: AppKeys.subscriberListClearFilters,
                             onPressed: () {
                               _clearFilters();
                               _loadData();
@@ -472,12 +473,36 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
             spacing: 6,
             runSpacing: 4,
             children: [
-              _sortChip('Name ↑', SortOption.nameAsc),
-              _sortChip('Name ↓', SortOption.nameDsc),
-              _sortChip('Due ↑', SortOption.dueHigh),
-              _sortChip('Due ↓', SortOption.dueLow),
-              _sortChip('Rent ↑', SortOption.rentHigh),
-              _sortChip('Rent ↓', SortOption.rentLow),
+              _sortChip(
+                'Name ↑',
+                SortOption.nameAsc,
+                AppKeys.subscriberSortNameAsc,
+              ),
+              _sortChip(
+                'Name ↓',
+                SortOption.nameDsc,
+                AppKeys.subscriberSortNameDsc,
+              ),
+              _sortChip(
+                'Due ↑',
+                SortOption.dueHigh,
+                AppKeys.subscriberSortDueHigh,
+              ),
+              _sortChip(
+                'Due ↓',
+                SortOption.dueLow,
+                AppKeys.subscriberSortDueLow,
+              ),
+              _sortChip(
+                'Rent ↑',
+                SortOption.rentHigh,
+                AppKeys.subscriberSortRentHigh,
+              ),
+              _sortChip(
+                'Rent ↓',
+                SortOption.rentLow,
+                AppKeys.subscriberSortRentLow,
+              ),
             ],
           ),
 
@@ -573,6 +598,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
   Widget _areaChip(String label, int? areaId) {
     final selected = _selectedAreaId == areaId;
     return FilterChip(
+      key: AppKeys.subscriberAreaFilter(areaId),
       label: Text(label, style: const TextStyle(fontSize: 12)),
       selected: selected,
       visualDensity: VisualDensity.compact,
@@ -583,9 +609,10 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
     );
   }
 
-  Widget _sortChip(String label, SortOption option) {
+  Widget _sortChip(String label, SortOption option, Key key) {
     final selected = _sortOption == option;
     return FilterChip(
+      key: key,
       label: Text(label, style: const TextStyle(fontSize: 12)),
       selected: selected,
       visualDensity: VisualDensity.compact,

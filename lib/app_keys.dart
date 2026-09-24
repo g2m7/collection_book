@@ -12,6 +12,7 @@ abstract final class AppKeys {
   static const homeSubscribers = Key('home-subscribers');
   static const homeSettings = Key('home-settings');
   static const homeRecordPayment = Key('home-record-payment');
+  static Key homeAreaCard(int areaId) => Key('home-area-card-$areaId');
 
   static const subscriberListAdd = Key('subscriber-list-add');
   static const subscriberListSearch = Key('subscriber-list-search');
@@ -24,6 +25,20 @@ abstract final class AppKeys {
   static const subscriberFilterOverpaid = Key('subscriber-filter-overpaid');
   static const subscriberStatusActive = Key('subscriber-status-active');
   static const subscriberStatusInactive = Key('subscriber-status-inactive');
+  static Key subscriberAreaFilter(int? areaId) => Key(
+    areaId == null
+        ? 'subscriber-area-filter-all'
+        : 'subscriber-area-filter-$areaId',
+  );
+  static const subscriberSortNameAsc = Key('subscriber-sort-name-asc');
+  static const subscriberSortNameDsc = Key('subscriber-sort-name-dsc');
+  static const subscriberSortDueHigh = Key('subscriber-sort-due-high');
+  static const subscriberSortDueLow = Key('subscriber-sort-due-low');
+  static const subscriberSortRentHigh = Key('subscriber-sort-rent-high');
+  static const subscriberSortRentLow = Key('subscriber-sort-rent-low');
+  static const subscriberListClearFilters = Key(
+    'subscriber-list-clear-filters',
+  );
 
   static final subscriberForm = GlobalKey<FormState>(
     debugLabel: 'subscriber-form',
@@ -38,6 +53,10 @@ abstract final class AppKeys {
   static const subscriberSave = Key('subscriber-save');
   static const subscriberServiceTv = Key('subscriber-service-tv');
   static const subscriberServiceFiber = Key('subscriber-service-fiber');
+  static const subscriberArea = Key('subscriber-area');
+  static const subscriberStartMonth = Key('subscriber-start-month');
+  static const subscriberStartYear = Key('subscriber-start-year');
+  static const subscriberActive = Key('subscriber-active');
 
   static const subscriberDetailEdit = Key('subscriber-detail-edit');
   static const subscriberDetailDelete = Key('subscriber-detail-delete');
@@ -51,6 +70,8 @@ abstract final class AppKeys {
     'subscriber-detail-year-previous',
   );
   static const subscriberDetailYearNext = Key('subscriber-detail-year-next');
+  static Key subscriberDetailMonth(int month, int year) =>
+      Key('subscriber-detail-month-$year-$month');
 
   static const paymentSubscriber = Key('payment-subscriber');
   static const paymentAmount = Key('payment-amount');
@@ -59,6 +80,11 @@ abstract final class AppKeys {
   static const paymentSave = Key('payment-save');
   static const paymentSaveAndSend = Key('payment-save-and-send');
   static const paymentClearDue = Key('payment-clear-due');
+  static const paymentMonth = Key('payment-month');
+  static const paymentYear = Key('payment-year');
+  static const paymentDelete = Key('payment-delete');
+  static const paymentClearDueApply = Key('payment-clear-due-apply');
+  static const paymentClearDueApplyNote = Key('payment-clear-due-apply-note');
 
   static const settingsModeTv = Key('settings-mode-tv');
   static const settingsModeFiber = Key('settings-mode-fiber');
@@ -74,6 +100,10 @@ abstract final class AppKeys {
   static const settingsReset = Key('settings-reset');
   static const areaNameField = Key('area-name-field');
   static const areaNameSave = Key('area-name-save');
+  static Key settingsAreaTile(String name) => Key('settings-area-$name');
+  static Key settingsAreaDelete(String name) =>
+      Key('settings-area-delete-$name');
+  static const resetConfirm = Key('reset-confirm');
 
   static const receiptLanguageEnglish = Key('receipt-language-english');
   static const receiptLanguageHindi = Key('receipt-language-hindi');
@@ -91,4 +121,6 @@ abstract final class AppKeys {
   static const importPickFile = Key('import-pick-file');
   static const importBack = Key('import-back');
   static const importHistoryEmpty = Key('import-history-empty');
+  static Key importHistoryRun(int runId) => Key('import-history-run-$runId');
+  static const importErrorSearch = Key('import-error-search');
 }

@@ -1,87 +1,129 @@
 # Plan: Acquisition & Product Funnel Telemetry
 
 ## 1. Overview & Objective
-Optimizing customer acquisition cost (CAC) and conversion rates requires precise visibility into the operator journey:
-$$\text{Ad / Referral Click} \longrightarrow \text{Install} \longrightarrow \text{Add / Import 1st Subscriber} \longrightarrow \text{Send 1st WhatsApp Receipt} \longrightarrow \text{Reach 100 Cap} \longrightarrow \text{Upgrade to Starter}$$
 
-However, traditional web analytics SDKs (Mixpanel, Segment, Google Analytics) fail in offline environments, slow down app startup, and risk leaking customer PII.
+Measure the currently available operator journey with privacy-minimized,
+offline-first milestones:
 
-This plan details the technical architecture for:
-1. **Offline SQLite Event Queue**: Buffering telemetry logs locally with zero impact on UI render performance.
-2. **Cloudflare Edge Beacon (Bun Runtime)**: Low-overhead batch ingest endpoint that receives event payloads when the phone regains internet connectivity.
-3. **Strict Data Minimization & Privacy**: Enforcing zero customer PII transmission (only anonymous hashed operator IDs, device model, and event names).
+`first app open → first subscriber created → import completed → payment
+recorded / receipt intent opened`
 
----
+The implemented events support acquisition and product-usage analysis. Upgrade,
+licensing, and UPI milestones are deferred because those product flows do not
+exist in the current application. The Worker does not create storage or
+analytics resources during local implementation.
 
-## 2. Requirements & Scope
+## 2. Implemented Architecture
 
-### In Scope
-- **Local Event Buffer Table**: SQLite table `analytics_events` inside `rent_ledger.db`.
-- **Event Taxonomy**: 8 key funnel milestone events (see `event-taxonomy.md`).
-- **Cloudflare Edge Ingestion Worker**: `POST /api/v1/telemetry/batch` accepting gzip-compressed JSON event batches.
-- **Battery & Bandwidth Throttling**: Sync flushes occur only when connected to unmetered network or after a significant user milestone (e.g. paywall view).
+### Flutter client
 
-### Out of Scope
-- Session screen recording or heatmaps (unnecessary overhead on entry-level Android devices).
+- `analytics_events` is created by the existing `DatabaseService` in schema v8.
+  Rows contain a random event ID, allowlisted name/properties, epoch-millisecond
+  creation time, attempt count, next-attempt time, and a bounded generic error
+  code. The simple `synced` flag in the original draft was replaced because it
+  could not safely represent retry scheduling. `analytics_milestones` provides
+  durable unique claims in the same transaction as first-open and
+  first-subscriber event insertion.
+- `AnalyticsService` validates events, names, property keys, primitive types,
+  and enum/count values before local insertion. It generates a cryptographically
+  random install-scoped `anon_<32 hex>` client ID. This is **not** a hash of an
+  operator identity.
+- The queue is retained for 30 days, sent in batches of at most 50 as gzip JSON,
+  and only deleted after the Worker explicitly accepts their event IDs. Network,
+  timeout, 408, 425, 429, and 5xx failures use bounded exponential backoff.
+  Other 4xx responses, including permanent 413 size rejection, discard the
+  client-invalid batch. Redirect responses are retained. The eight-second
+  transport timeout covers request close and complete response-body consumption.
+  Raw response bodies and exception text are never stored in the queue.
+- Connectivity is only a flush trigger, not proof of internet access. Periodic,
+  resume, and milestone-triggered flush attempts proceed only when
+  `connectivity_plus` reports Wi-Fi. Only one flush runs at a time.
+- No subscriber/operator PII, import filename, exception text, IP address, user
+  agent, phone, VC, address, name, cookie, secret, raw order ID, device model,
+  OS version, or referrer is queued or transmitted.
 
----
+### cbk-edge Worker
 
-## 3. Architecture & Technical Design
+- `POST /api/v1/telemetry/batch` requires `application/json` and gzip encoding.
+- The request is rejected unless its compressed body is at most 64 KiB,
+  decompressed body is at most 256 KiB, and batch has 1–50 events. Validation is
+  repeated server-side against the same canonical event/property allowlist.
+  Compressed size, decompressed size, and event-count limit failures all return
+  413; malformed gzip/JSON and schema/taxonomy failures return 400.
+- Every validated event is written to the typed `TELEMETRY` Analytics Engine
+  binding with the anonymous client ID as its single index. Event name, stable
+  event ID, and validated properties are blobs; timestamp is a double. The
+  binding/dataset is configured locally only. A missing binding or write failure
+  returns retryable 503; it is never falsely acknowledged.
+- Responses are method-aware, `no-store`, and use the existing Worker security
+  headers. Telemetry requests and bodies are not logged. Existing minimal
+  referral logging is unchanged.
 
-```mermaid
-flowchart LR
-    subgraph Client["Flutter Mobile Client"]
-        Action["User Event (e.g. send_receipt)"] --> Buffer["SQLite analytics_events Table"]
-        Buffer --> Check{"Online & Battery OK?"}
-        Check -- Yes --> Batch["Batch Flusher (Max 50 events)"]
-    end
+## 3. Privacy Correction From Earlier Draft
 
-    subgraph Edge["Cloudflare Worker (Bun)"]
-        Batch --> Ingest["POST /api/v1/telemetry/batch"]
-        Ingest --> Filter["PII Scrubber & IP Anonymizer"]
-        Filter --> AnalyticsEngine["Cloudflare Analytics Engine / Tinybird"]
-    end
-```
-
-### 3.1 SQLite Schema for Local Event Queue
-```sql
-CREATE TABLE analytics_events (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  event_name TEXT NOT NULL,
-  properties_json TEXT NOT NULL,
-  timestamp INTEGER NOT NULL,
-  synced INTEGER NOT NULL DEFAULT 0
-);
-CREATE INDEX idx_events_synced ON analytics_events(synced);
-```
-
----
+The earlier plan proposed a salted hash of operator identity, device model, OS,
+and referrer. Those items are not implemented. The client ID is random and
+install-scoped; it is not derived from any subscriber, operator, account, or
+device identity. Device metadata and referrers remain absent pending a separate,
+explicit privacy decision.
 
 ## 4. Implementation Checklist
 
-- [ ] **Phase 1: Local Event Queue**
-  - [ ] Add `analytics_events` table in SQLite schema migration.
-  - [ ] Create `lib/services/analytics_service.dart`.
-  - [ ] Implement non-blocking fire-and-forget event logger.
+- [x] **Phase 1: Local validated queue**
+  - [x] Add the migration-safe schema v8 analytics queue.
+  - [x] Add one allowlisting `AnalyticsService` with a random anonymous client
+        ID, retention, bounded batching, backoff, and exact acknowledgement.
+  - [x] Add deterministic queue, validation, retry, expiry, milestone, client-ID
+        persistence, actual import-commit, and migration tests.
+- [x] **Phase 2: Existing-flow instrumentation**
+  - [x] Record `app_first_open` once per install with a transactional SQLite
+        claim, including concurrent-call and rollback coverage.
+  - [x] Record the first manual or successfully imported subscriber in the same
+        database transaction as subscriber creation, using one durable claim;
+        cover concurrent and both manual/import orderings.
+  - [x] Record MSO import telemetry only when the persisted run status is
+        `success` or `partial`; failed runs emit no import milestone. Payloads
+        contain aggregate counts, format, elapsed time, and service mode, never
+        the filename.
+  - [x] Record payment only after the database write succeeds.
+  - [x] Record receipt dispatch only after an app or wa.me launcher succeeds;
+        this does not claim delivery.
+- [x] **Phase 3: Flush and Worker ingestion**
+  - [x] Add periodic/resume/milestone best-effort Wi-Fi triggers and serialized
+        gzip delivery with timeout and bounded backoff.
+  - [x] Add strict, method-aware, privacy-allowlisted Worker ingestion with
+        typed Analytics Engine writes and no-store/security responses.
+  - [x] Add deterministic Worker success, malformed, oversize, encoding,
+        method, missing-binding, native field-limit, write-failure, unknown
+        taxonomy, and privacy tests; add client redirect/body-timeout tests.
+- [ ] **Phase 4: External and device verification**
+  - [ ] Configure the production Analytics Engine binding through the approved
+        Cloudflare deployment process.
+  - [ ] Deploy and verify the Worker, DNS, and production endpoint externally.
+  - [ ] On a physical Android device, verify offline queueing, Wi-Fi/resume
+        flush, background/resume behavior, and absence of PII in the local
+        queue and backend configuration.
+  - [ ] Perform a production Analytics Engine query/sample inspection after
+        deployment using synthetic data only.
 
-- [ ] **Phase 2: Event Instrumentation Across Screens**
-  - [ ] Instrument `first_app_open` in `lib/main.dart`.
-  - [ ] Instrument `mso_import_success` in `lib/services/import_service.dart`.
-  - [ ] Instrument `whatsapp_receipt_dispatched` in `lib/services/whatsapp_receipt_service.dart`.
-  - [ ] Instrument `paywall_impression` and `upi_checkout_initiated` in paywall modal.
+Parent phases are checked only when all their child checks above are verified.
+External deployment and manual device checks remain deliberately unchecked.
 
-- [ ] **Phase 3: Background Flush Engine**
-  - [ ] Implement periodic batch flusher checking network state via `connectivity_plus`.
-  - [ ] Implement Cloudflare edge ingest route `/api/v1/telemetry/batch`.
+## 5. Automated Verification
 
----
+Run from repository root:
 
-## 5. Verification Plan
+```sh
+flutter pub get
+dart format --output=none --set-exit-if-changed lib test
+flutter analyze
+flutter test
+bun run format:check
+bun run typecheck
+bun test
+bun run build:worker
+git diff --check
+git diff --cached
+```
 
-### Automated Tests
-- Unit test: SQLite event insertion does not block the database or UI thread.
-- Unit test: Event batch flusher marks synced rows and removes events older than 30 days.
-
-### Manual Verification
-- Perform actions in airplane mode; verify events accumulate in `analytics_events`.
-- Reconnect WiFi; verify batch flushes and HTTP 200 returned from edge endpoint.
+No fake deployment, DNS, binding availability, or device result is claimed.

@@ -1,45 +1,44 @@
 # Patrol end-to-end coverage
 
-## Objective and policy
+## Objective and status policy
 
-Patrol is the repository-standard end-to-end framework for implemented Flutter
-user journeys. A small set of complete journeys in `patrol_test/` exercises the
-real app, sqflite database, shared preferences, navigation, and Android native
-harness. Unit and widget tests under `test/` remain the right layer for parsers,
-migrations, service logic, and other isolated behavior.
+Patrol is the repository-standard Android end-to-end layer for implemented,
+deterministic Flutter journeys. Production initialization, the singleton
+`DatabaseService`, shared preferences, app navigation, and real app widgets are
+used throughout. Android test orchestration (`clearPackageData=true`) isolates
+each journey. Tests do not use arbitrary sleeps, fake native pickers, or fake
+external applications.
 
-Android test orchestration is the primary isolation mechanism: the official
-`PatrolJUnitRunner` runs with `clearPackageData=true`, and Gradle uses
-`ANDROIDX_TEST_ORCHESTRATOR`. Do not make journeys depend on execution order or
-add sleeps. Use Patrol finders, `pumpAndSettle`, and scrolling/waiter APIs.
+Status terms in this plan are deliberately narrow:
 
-Normal pull-request CI installs the pinned `patrol_cli` 4.8.0, checks the Patrol
-environment, builds the debug APK, and compiles the Android instrumentation APK.
-It does not start a hosted emulator on every PR: GitHub-hosted Android emulators
-are slow and can be flaky. The `Patrol Android emulator (opt-in)` job is
-available through **Actions → CI → Run workflow** with `run_android_patrol=true`
-and uses an API 34 x86_64 emulator. A successful or failed opt-in run must be
-reported as evidence; neither policy claims device execution by itself.
+- **Written**: deterministic assertions exist in `patrol_test/`.
+- **Analyzed/formatted**: Dart formatting and static analysis pass.
+- **Compiled**: the Android app and instrumentation harness build.
+- **Executed**: a named Android device/emulator completed the corresponding
+  Patrol command. Compilation is not execution, and CI configuration is not
+  execution evidence.
+
+The nine current journeys are written, analyzed, compiled, and executed. The full
+9/9 suite passed on a Pixel 8 running Android 17 / API 37 in 3m37 through
+`tool/run_patrol_android.sh`. The runner temporarily changed
+`screen_off_timeout` from 30000 to 2147483647 and verified restoration back to
+30000 afterward. Native picker, share, installed-app, browser, App Link, physical
+restore, and iOS scenarios are not represented by fake automated tests.
 
 ## Architecture and commands
 
-- `pubspec.yaml` pins `patrol: ^4.10.0` and configures the Collection Book app and
-  Android package `com.sarbaa.cbk`. Patrol's default `patrol_test/` directory is
-  intentional.
-- `patrol_test/app_patrol.dart` calls the same async service/database/preferences
-  initialization as production, then each test pumps `CollectionBookApp`. It does
-  not call `ensureInitialized`, `runApp`, or override Flutter errors.
-- `lib/app_keys.dart` is the shared, production-safe selector catalog. Interactive
-  widgets own these stable keys; tests use labels only for meaningful visible
-  outcomes where a key would not identify the state.
-- Generated `**/test_bundle.dart` and `.patrol.env` are ignored.
-- `DatabaseService` remains the singleton used by production and tests. Isolation
-  comes from the Android orchestrator clearing app data between tests.
-- `AppModeService.resetInMemoryForTesting` is a test-only notifier reset used to
-  prove that SharedPreferences restores a mode during bootstrap. It deliberately
-  does not change preferences or provide a production reset path.
-
-Install and run (the pinned CLI is also a prerequisite for `bun run verify:all`):
+- `pubspec.yaml` pins Patrol and configures package `com.sarbaa.cbk`.
+- `patrol_test/app_patrol.dart` exposes the same
+  `initializeCollectionBookApp` bootstrap used by production. A test can call
+  that bootstrap before deterministic database seeding, then pump
+  `CollectionBookApp`; UI-created journeys use `pumpCollectionBook` directly.
+- `lib/app_keys.dart` contains stable production-safe selectors. Dynamic keys
+  identify area-specific cards/chips/rows and subscriber-specific month cells.
+- Unit/widget tests under `test/` continue to own exhaustive parser, migration,
+  receipt formatting/normalization, and analytics edge cases.
+- Generated `**/test_bundle.dart` and `.patrol.env` remain ignored.
+- Reinitializing a pumped app proves SharedPreferences restoration through the
+  production bootstrap; it is not described as an Android OS process kill.
 
 ```sh
 flutter pub get
@@ -47,71 +46,106 @@ dart pub global activate patrol_cli 4.8.0
 patrol doctor
 patrol test
 patrol test --device <device_id>
-```
-
-Local compile gate (JDK 17 is the supported Gradle toolchain):
-
-```sh
 patrol build android --debug
-# Optional lower-level native assembly check:
-(cd android && ./gradlew :app:assembleDebugAndroidTest)
+(cd android && ./gradlew :app:assembleDebugAndroidTest) # optional JDK 17 check
 ```
 
-Repository Flutter checks (`bun run verify:all` includes these Flutter commands,
-the ordinary debug APK build, and `patrol build android --debug`):
+Repository checks:
 
 ```sh
-bun run verify:all
+dart format --output=none --set-exit-if-changed lib test patrol_test
+flutter analyze
+flutter test
+git diff --check
 ```
 
-The emulated CI job is a diagnostic/opt-in gate, not proof that every external
-application is installed on a physical phone.
+Normal PR CI compiles the Patrol harness. The API 34 emulator job remains an
+opt-in workflow input because hosted Android emulators are slow and flaky:
 
-## Coverage matrix
+```sh
+# GitHub Actions -> CI -> Run workflow
+# input: run_android_patrol=true
+```
 
-| Current app surface | Required Patrol seam | Coverage and assertion policy | Status / remaining boundary |
-| --- | --- | --- | --- |
-| Clean launch and dashboard | `clean launch reaches every empty-data screen…` | Asserts dashboard selector, empty TV dashboard state, month-forward navigation, and reaches subscriber/add/payment/settings surfaces. | Passed on the Android device run. |
-| Subscriber list, search/filter surfaces, add | TV and Fiber journeys | Reaches the empty list, creates records, verifies a matching subscriber search, verifies a no-result search and stable-key clear, then verifies Paid/Unpaid/All payment filters after payment. Fiber creation is hidden in TV mode and restored in Fiber mode. | Passed on the Android device run. |
-| Add TV subscriber | `TV subscriber validation, edit, payment, and dashboard persistence` | Required-name/rent validation, name/VC/valid Indian phone/rent entry, real sqflite persistence, list result. | Passed on the Android device run. |
-| Edit TV subscriber | Same TV journey | Opens detail, edits name, saves, and sees updated name in detail and list. | Passed on the Android device run. |
-| Subscriber detail and year navigation | Same TV journey | Opens detail, sees persisted identifiers, opens payment, and has stable selectors for year navigation. | Detail and payment are implemented in Patrol; changing detail year is selector-wired but not asserted as a separate journey. |
-| Record payment, adjustment/note inputs, clear-due controls | Same TV journey | Opens payment for the subscriber, saves the prefilled payment without launching an external app, and verifies the visible paid amount in detail and dashboard. | Core save is implemented; adjustment/note and clear-due helper inputs are selector-wired but not each exercised in a default journey. |
-| TV/Fiber isolation and mode persistence | `Fiber data stays isolated and persisted mode survives reinitialization` | Creates Fiber data, verifies it is hidden in TV mode, restores Fiber mode, clears only the singleton's in-memory value through a test-only seam, then re-runs bootstrap so SharedPreferences must restore Fiber before the data is checked again. | Passed on the Android device run; this verifies persistence without claiming an OS process restart. |
-| Month navigation | Clean launch journey | Advances the real dashboard month and verifies the next month/year label. | Passed on the Android device run. |
-| Settings: mode | Clean launch and Fiber journeys | Switches to Fiber in Settings and exercises the dashboard pill and service isolation. | Passed on the Android device run. |
-| Settings: receipt language/business name | Clean launch journey | Selects Hindi and saves a business name in app dialogs, then observes the updated UI. | Passed on the Android device run. |
-| Settings: areas, backup, restore, reset | Clean launch journey | Creates a persisted area, creates a real app-internal database backup, asserts durable backup-timestamp state, opens the reset confirmation, and cancels it. Stable selectors also cover native share/restore entry points. | Deterministic portions passed on the Android device run. Native share/picker and area edit/delete confirmation remain separate boundaries. |
-| Import wizard deterministic navigation | Clean launch journey | Selects service, start month/year, advances to file selection, and reaches empty import history. | Passed on the Android device run. |
-| Import parsing/validation/dry run/commit/history/detail | Unit coverage plus native scenario below | Existing `test/` covers deterministic parser and import behavior. Full E2E requires a real spreadsheet provisioned into the Android document picker. | Pending exact scenario: place a supported `.csv`/`.xls`/`.xlsx` fixture in the emulator/device Downloads location, run `patrol test` with the opt-in import scenario, select it in the native picker, then assert validation, dry run, commit, history, and any error detail. No fake picker test is included. |
-| WhatsApp receipt precondition and result | TV payment journey | A valid persisted phone is entered, payment is saved, and the detail receipt action is observed without invoking an installed app. | In-app precondition passed on the Android device run; installed-app behavior remains pending. |
-| WhatsApp/browser fallback and receipt text | Existing service unit tests plus manual/physical scenario | Receipt normalization/building/fallback logic remains unit tested. | Pending physical/opt-in scenario: send a real receipt with WhatsApp installed; repeat with WhatsApp absent to verify `wa.me` browser fallback. Do not require this on hosted CI. |
-| Share backup and restore picker | Settings selectors | Production interaction points are stable. | Pending physical device/filesystem scenario: create backup, open a real share target, then restore a provisioned backup file. No fake native picker test is included. |
+## Deterministic coverage matrix
 
-## Android and iOS status
+| App-owned surface | Journey and meaningful assertions | Current status |
+| --- | --- | --- |
+| Clean launch and dashboard | Empty-state text; production loading/bootstrap; subscribers, settings, and payment entry points | Passed in the 9/9 Pixel 8 run; the TV journey's initial state and explicit entry navigation provide this coverage |
+| Dashboard KPIs, area summary, month boundaries | Seeded TV data proves outstanding/collected/pending counts, area totals, January lower boundary, December-to-January rollover, reset-to-current behavior, and area-card deep link with its area filter | Passed in the 9/9 Pixel 8 run |
+| TV subscriber form | Required-name and rent failures; invalid/valid phone; area, alias, VC, rent, previous due, start month, active state; list/detail persisted outcomes | Passed in the 9/9 Pixel 8 run |
+| TV subscriber edit | Name, alias, VC, phone, rent, previous due, start month, and active state are edited through the production form and observed afterward | Passed in the 9/9 Pixel 8 run |
+| Fiber subscriber form and isolation | TV/Fiber selector visibility, account ID, username, common fields, complete database re-query after create/edit, seeded TV/Fiber isolation, blue/green production themes, and Fiber restoration after production reinitialization | Passed in the 9/9 Pixel 8 run |
+| Search | Name/alias/VC search, no-result behavior inherited from the empty/search flow, stable clear action, restored result counts | Passed in the 9/9 Pixel 8 run |
+| Payment/status filters | Seed balances are verified directly before UI interaction; all, unpaid, paid (including overpaid under the current predicate), overpaid, active, inactive, combined filters, and reset are asserted against resulting visibility/counts | Passed in the 9/9 Pixel 8 run |
+| Area filter and grouping | Seeded two-area directory, North-only combined filter, grouped area headings, and restored complete result count | Passed in the 9/9 Pixel 8 run |
+| Sort modes | Name ascending/descending, due high/low, and rent high/low are tapped through stable keys; selected state and filtered result count are asserted | Passed in the 9/9 Pixel 8 run |
+| Detail profile, matrix, and years | Persisted profile values, previous/next year, non-current matrix-cell entry, and keyed payment month/year changes with due-projection assertions | Passed in the 9/9 Pixel 8 run |
+| Payment save/edit/delete | Real database subscriber; current-due calculation; both clear-due actions; auto-note; zero/remaining/advance projection; positive and negative adjustments; save; edit existing month; cancel/confirm delete; database re-query | Passed in the 9/9 Pixel 8 run |
+| Receipt precondition and error branch | Save & Send with no phone asserts the in-app saved-but-not-sent outcome and exactly one persisted payment | Passed in the 9/9 Pixel 8 run |
+| Receipt settings and referral | Cycles English, Marathi, Bengali, Tamil, and Hindi; edits business name; asserts a generated six-character referral code; reboots the production bootstrap and verifies persisted settings | Passed in the 9/9 Pixel 8 run |
+| Area CRUD | Add, rename, cancel/confirm delete, warning text, and transactional subscriber unassignment after area deletion | Passed in the 9/9 Pixel 8 run |
+| Backup and restore | One real app-internal backup with success/timestamp state and a one-file directory assertion; restore destructive confirmation is cancelled before the native picker | Passed in the 9/9 Pixel 8 run |
+| Reset | Countdown starts at 10, is advanced through the test clock, confirms after enablement, returns home, verifies empty subscriber/area tables, and verifies cleared preferences and restored in-memory defaults | Passed in the 9/9 Pixel 8 run |
+| Subscriber deletion | Cancel and confirm paths; detail removal; subscriber and payment database re-query | Passed in the 9/9 Pixel 8 run |
+| Import setup | TV and Fiber preselection, disabled Continue state, start month/year selection, file-selection transition, and Back behavior are exercised; native file acquisition remains external | Passed in the 9/9 Pixel 8 run |
+| Import history and run details | Seeded production import-run/error rows prove partial/success summaries, added/updated/rejected/conflict/payment counts, fatal/error/warning rows, error search, and no-match state | Passed in the 9/9 Pixel 8 run |
+| Import parser, mapping, dry run, commit, transaction, dedup | Exhaustive deterministic logic remains under `test/` | Unit coverage; full file-driven UI scenario pending a provisioned native file |
 
-Android uses the official Kotlin DSL Patrol setup in
-`android/app/build.gradle.kts`: `PatrolJUnitRunner`, clear-package-data argument,
-`ANDROIDX_TEST_ORCHESTRATOR`, orchestrator 1.5.1, and the parameterized
-`MainActivityTest.java` under the production package. The
-`patrol build android --debug` command and the lower-level Android-test assembly
-task both completed locally, so the Dart Patrol bundle and native harness compile.
-All three default Patrol journeys subsequently passed on a wireless Pixel 8 running
-Android 17 (API 37). This does not clear the separately listed native picker,
-installed-app, share-target, or physical restore scenarios.
+## Explicitly unimplemented product surfaces
 
-iOS Patrol integration is pending. The current Xcode app bundle is
-`com.example.ledger`, not a confirmed production identifier, so no iOS bundle is
-declared in `pubspec.yaml`. Before iOS execution, choose and configure the final
-bundle identifier, add the Patrol RunnerUITests target/scheme and required
-signing/capabilities in Xcode, and document a real simulator/device pass. Do not
-treat Android setup as iOS coverage.
+The current Flutter client is hardcoded English; receipt language does not localize
+app UI. `both` service mode, cloud sync/auth, and the paywall described in the
+longer product brief are not implemented routes or behaviors. They are not
+claimed as Patrol coverage until separately designed and implemented. The
+Android theme test covers the implemented TV blue and Fiber teal palettes only.
+
+Reset clears app-owned SQLite data, SharedPreferences, and the in-memory
+singleton defaults as one coordinated operation. Preference and database recovery
+is covered by deterministic service tests; the device journey verifies the
+resulting clean state.
+
+## External-only and opt-in scenarios
+
+These require an actual device filesystem or installed application and remain
+honestly pending. Add an opt-in Patrol journey or run an exact manual scenario
+only when the device contract is provisioned; do not inject a fake production
+launcher/picker in the default suite.
+
+1. **Import file picker and complete import:** copy a supported
+   `patrol-tv-valid.csv`, invalid/partial fixture, and Fiber fixture into the
+   emulator/device Downloads location; run the import scenario on a named
+   device; select each real file; assert mapping, auto-ID (when applicable),
+   validation, dry-run counts, transactional commit, history summary, and error
+   search. Repeat one fixture to assert upsert/conflict behavior.
+2. **Restore:** create a backup, provision a second app database state, choose
+   the real backup through Android's picker, confirm replacement, relaunch, and
+   assert the restored records. The deterministic confirmation/cancel path is
+   automated.
+3. **Share backup:** tap Share Backup on a device with a known share target;
+   verify the database filename and target handoff. Default CI must not depend
+   on a vendor share sheet.
+4. **WhatsApp/browser:** send a real receipt with WhatsApp installed, then with
+   WhatsApp absent to verify the `wa.me` browser fallback and chooser. Dart
+   tests cover normalization/templates; neither installed state is fakeable in
+   the default harness.
+5. **Referral App Link:** verify `/r/{six-character-code}` against the signed
+   Android package, Play listing, and production Worker on a real device. The
+   Flutter app currently has no in-app route for this URL.
+6. **Lifecycle/analytics network:** exercise real app background/resume and
+   Wi-Fi transport separately; deterministic queue/privacy/retry behavior stays
+   in `test/`.
+7. **iOS:** no Patrol iOS bundle/scheme/signing setup is claimed. Configure the
+   final bundle identifier and RunnerUITests target before adding execution
+   evidence.
 
 ## Completion evidence policy
 
-A device test is “verified” only after `patrol doctor` and the corresponding
-`patrol test` command complete on a named Android device/emulator. A successful
-APK build or Android-test APK assembly proves compilation only. Pending iOS,
-native file selection, installed-app, browser fallback, share-target, and
-physical restore checks must remain pending until performed. No deployment or
-signing prerequisite is implied by this plan.
+A journey is **executed** only after `patrol doctor` and `patrol test` (or
+`patrol test --device <device_id>`) complete on a named Android device or
+emulator. Record the device/API and exact command when execution occurs. The
+current 9/9 command completed on a Pixel 8 (Android 17 / API 37) in 3m37
+through `tool/run_patrol_android.sh`; the timeout restoration readback confirmed
+30000 after the temporary 2147483647 setting. Deployment, signing, external
+application delivery, native filesystem, and iOS checks are never implied by a
+passing build.

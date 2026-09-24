@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/payment.dart';
 import '../models/subscriber.dart';
 import 'receipt_settings_service.dart';
+import 'analytics_service.dart';
 
 enum ReceiptBalanceStatus { fullyPaid, advance, arrears }
 
@@ -34,18 +35,31 @@ class ReceiptLaunchException implements Exception {
 }
 
 typedef UrlLauncher = Future<bool> Function(Uri uri);
+typedef TelemetryRecorder =
+    Future<void> Function(String eventName, Map<String, Object?> properties);
 
 /// Formats receipts and opens them in WhatsApp, falling back to wa.me.
 class WhatsAppReceiptService {
   static const referralBaseUrl = 'https://cbk.sarbaa.com/';
 
   final UrlLauncher _launchUrl;
+  final TelemetryRecorder _recordTelemetry;
 
-  WhatsAppReceiptService({UrlLauncher? launchUrl})
-    : _launchUrl = launchUrl ?? _defaultLaunchUrl;
+  WhatsAppReceiptService({
+    UrlLauncher? launchUrl,
+    TelemetryRecorder? recordTelemetry,
+  }) : _launchUrl = launchUrl ?? _defaultLaunchUrl,
+       _recordTelemetry = recordTelemetry ?? _defaultRecordTelemetry;
 
   static Future<bool> _defaultLaunchUrl(Uri uri) {
     return launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  static Future<void> _defaultRecordTelemetry(
+    String eventName,
+    Map<String, Object?> properties,
+  ) {
+    return AnalyticsService().track(eventName, properties);
   }
 
   /// Normalizes an Indian mobile number to E.164 (+91XXXXXXXXXX).
@@ -179,6 +193,7 @@ class WhatsAppReceiptService {
   Future<ReceiptLaunchResult> launch({
     required String phone,
     required String message,
+    String? serviceType,
   }) async {
     final normalized = normalizeIndianPhone(phone);
     if (normalized == null) {
@@ -194,6 +209,7 @@ class WhatsAppReceiptService {
 
     try {
       if (await _launchUrl(appUri)) {
+        await _recordDispatch(serviceType, usedWebFallback: false);
         return const ReceiptLaunchResult(usedWebFallback: false);
       }
     } catch (error) {
@@ -202,6 +218,7 @@ class WhatsAppReceiptService {
 
     try {
       if (await _launchUrl(webUri)) {
+        await _recordDispatch(serviceType, usedWebFallback: true);
         return const ReceiptLaunchResult(usedWebFallback: true);
       }
     } catch (error) {
@@ -217,6 +234,17 @@ class WhatsAppReceiptService {
           : 'WhatsApp could not be opened, and wa.me was unavailable. '
                 'WhatsApp error: $appFailure',
     );
+  }
+
+  Future<void> _recordDispatch(
+    String? serviceType, {
+    required bool usedWebFallback,
+  }) async {
+    if (serviceType != 'tv' && serviceType != 'fiber') return;
+    await _recordTelemetry('whatsapp_receipt_dispatched', {
+      'service_type': serviceType,
+      'used_web_fallback': usedWebFallback,
+    });
   }
 
   static String _subscriberIdentifier(Subscriber subscriber) {

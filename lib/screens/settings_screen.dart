@@ -7,6 +7,7 @@ import '../models/area.dart';
 import '../services/database_service.dart';
 import '../services/backup_service.dart';
 import '../services/app_mode_service.dart';
+import '../services/app_reset_service.dart';
 import '../services/receipt_settings_service.dart';
 import 'import_wizard_screen.dart';
 import 'import_history_screen.dart';
@@ -24,6 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _backup = BackupService();
   final _modeService = AppModeService();
   final _receiptSettings = ReceiptSettingsService();
+  final _resetService = AppResetService();
   List<Area> _areas = [];
   DateTime? _lastBackup;
   String _referralCode = '';
@@ -204,10 +206,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _sectionHeader('Areas'),
                 ..._areas.map(
                   (a) => _tile(
+                    key: AppKeys.settingsAreaTile(a.name),
                     icon: PhosphorIcons.mapPin(PhosphorIconsStyle.bold),
                     title: a.name,
                     onTap: () => _editArea(a),
                     trailing: IconButton(
+                      key: AppKeys.settingsAreaDelete(a.name),
                       icon: Icon(
                         PhosphorIcons.trash(PhosphorIconsStyle.bold),
                         size: 20,
@@ -569,6 +573,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Rename Area'),
         content: TextField(
+          key: AppKeys.areaNameField,
           controller: controller,
           decoration: const InputDecoration(hintText: 'Area name…'),
           textCapitalization: TextCapitalization.words,
@@ -634,7 +639,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirmed != true || !mounted) return;
 
     try {
-      await _db.resetAllData();
+      await _resetService.reset();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -787,6 +792,7 @@ class _ResetConfirmationDialogState extends State<_ResetConfirmationDialog> {
           child: Text('Cancel', style: TextStyle(color: Colors.grey.shade600)),
         ),
         FilledButton(
+          key: AppKeys.resetConfirm,
           onPressed: canConfirm ? () => Navigator.pop(context, true) : null,
           style: FilledButton.styleFrom(
             backgroundColor: const Color(0xFFC62828),

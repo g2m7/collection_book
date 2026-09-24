@@ -74,6 +74,12 @@ class ReceiptSettingsService {
     return _getOrCreateReferralCode(prefs);
   }
 
+  /// Restores default in-memory values after an all-app-data reset.
+  void resetToDefaults() {
+    businessNameNotifier.value = defaultBusinessName;
+    languageNotifier.value = ReceiptLanguage.english;
+  }
+
   String _businessName(SharedPreferences prefs) {
     final value = prefs.getString(_businessNameKey)?.trim();
     return value == null || value.isEmpty ? defaultBusinessName : value;

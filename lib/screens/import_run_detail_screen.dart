@@ -3,6 +3,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../models/import_run.dart';
 import '../models/import_result.dart';
 import '../services/database_service.dart';
+import '../app_keys.dart';
 
 class ImportRunDetailScreen extends StatefulWidget {
   final ImportRun run;
@@ -134,6 +135,7 @@ class _ImportRunDetailScreenState extends State<ImportRunDetailScreen> {
                   ),
                   const SizedBox(height: 8),
                   TextField(
+                    key: AppKeys.importErrorSearch,
                     onChanged: (v) => setState(() => _searchQuery = v),
                     decoration: InputDecoration(
                       hintText: 'Search errors…',

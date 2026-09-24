@@ -12,4 +12,10 @@
   "observability": {
     "enabled": false,
   },
+  "analytics_engine_datasets": [
+    {
+      "binding": "TELEMETRY",
+      "dataset": "cbk_telemetry",
+    },
+  ],
 }

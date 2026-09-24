@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
 import 'screens/home_screen.dart';
@@ -11,11 +13,15 @@ import 'screens/import_history_screen.dart';
 import 'services/database_service.dart';
 import 'services/app_mode_service.dart';
 import 'services/receipt_settings_service.dart';
+import 'services/analytics_service.dart';
 
 Future<void> initializeCollectionBookApp() async {
   await DatabaseService().database;
   await AppModeService().init();
   await ReceiptSettingsService().init();
+  final analytics = AnalyticsService();
+  await analytics.init();
+  await analytics.recordAppFirstOpen();
 }
 
 void main() async {
@@ -24,8 +30,33 @@ void main() async {
   runApp(const CollectionBookApp());
 }
 
-class CollectionBookApp extends StatelessWidget {
+class CollectionBookApp extends StatefulWidget {
   const CollectionBookApp({super.key});
+
+  @override
+  State<CollectionBookApp> createState() => _CollectionBookAppState();
+}
+
+class _CollectionBookAppState extends State<CollectionBookApp>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(AnalyticsService().flushIfWifi());
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

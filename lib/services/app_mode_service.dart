@@ -24,22 +24,22 @@ class AppModeService {
 
   ServiceMode get mode => modeNotifier.value;
 
-  /// Clears only the in-memory singleton value for restart-style tests.
-  ///
-  /// Shared preferences are intentionally left untouched so the following
-  /// [init] verifies that production persistence restored the saved mode.
-  @visibleForTesting
-  void resetInMemoryForTesting() {
+  /// Restores the default in-memory value after an all-app-data reset.
+  void resetToDefaults() {
     modeNotifier.value = ServiceMode.tv;
   }
+
+  /// Clears only the in-memory singleton value for restart-style tests.
+  @visibleForTesting
+  void resetInMemoryForTesting() => resetToDefaults();
 
   /// Call once at app start to restore persisted mode.
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_prefKey);
-    if (saved == ServiceMode.fiber.key) {
-      modeNotifier.value = ServiceMode.fiber;
-    }
+    modeNotifier.value = saved == ServiceMode.fiber.key
+        ? ServiceMode.fiber
+        : ServiceMode.tv;
   }
 
   Future<void> setMode(ServiceMode mode) async {

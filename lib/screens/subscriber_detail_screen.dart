@@ -424,6 +424,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
                 month == DateTime.now().month && _year == DateTime.now().year;
 
             return InkWell(
+              key: AppKeys.subscriberDetailMonth(month, _year),
               onTap: () => Navigator.pushNamed(
                 context,
                 '/record-payment',
@@ -594,6 +595,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
       final result = await _receiptService.launch(
         phone: phone,
         message: message,
+        serviceType: subscriber.serviceType,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

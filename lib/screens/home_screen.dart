@@ -535,6 +535,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Card(
       child: InkWell(
+        key: AppKeys.homeAreaCard(area['area_id'] as int),
         onTap: () => Navigator.pushNamed(
           context,
           '/subscribers',

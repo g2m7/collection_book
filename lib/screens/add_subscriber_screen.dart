@@ -7,6 +7,7 @@ import '../models/subscriber.dart';
 import '../services/database_service.dart';
 import '../services/app_mode_service.dart';
 import '../services/whatsapp_receipt_service.dart';
+import '../services/analytics_service.dart';
 import '../app_keys.dart';
 
 class AddSubscriberScreen extends StatefulWidget {
@@ -118,7 +119,19 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
     if (_isEditing) {
       await _db.updateSubscriber(subscriber);
     } else {
-      await _db.insertSubscriber(subscriber);
+      final saved = await AnalyticsService().trackFirstSubscriber(
+        subscriber,
+        'manual',
+      );
+      if (!saved) {
+        if (mounted) {
+          setState(() => _saving = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Subscriber could not be added')),
+          );
+        }
+        return;
+      }
     }
 
     setState(() => _saving = false);
@@ -187,6 +200,7 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                   const SizedBox(height: 16),
                   _label('Area'),
                   DropdownButtonFormField<int>(
+                    key: AppKeys.subscriberArea,
                     initialValue: _selectedAreaId,
                     decoration: const InputDecoration(hintText: 'Select area…'),
                     isExpanded: true,
@@ -206,7 +220,7 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                   _label(_isFiber ? 'Account ID' : 'VC Number'),
                   TextFormField(
                     key: AppKeys.subscriberIdentifier,
-                    controller: _vcController,
+                    controller: _isFiber ? _accountIdController : _vcController,
                     decoration: InputDecoration(
                       hintText: _isFiber
                           ? 'Account or card number…'
@@ -293,6 +307,7 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                       Expanded(
                         flex: 2,
                         child: DropdownButtonFormField<int>(
+                          key: AppKeys.subscriberStartMonth,
                           initialValue: _startMonth,
                           decoration: const InputDecoration(hintText: 'Month…'),
                           items: List.generate(12, (i) {
@@ -321,6 +336,7 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<int>(
+                          key: AppKeys.subscriberStartYear,
                           initialValue: _startYear,
                           decoration: const InputDecoration(hintText: 'Year…'),
                           items: () {
@@ -382,6 +398,7 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                         ],
                       ),
                       CupertinoSwitch(
+                        key: AppKeys.subscriberActive,
                         value: _isActive,
                         onChanged: (v) => setState(() => _isActive = v),
                         activeTrackColor: const Color(0xFF2E7D32),

@@ -188,6 +188,43 @@ void main() {
       expect(attempted.last.host, 'wa.me');
     });
 
+    test('records dispatch only after a launcher succeeds', () async {
+      final events = <MapEntry<String, Map<String, Object?>>>[];
+      final service = WhatsAppReceiptService(
+        launchUrl: (_) async => false,
+        recordTelemetry: (name, properties) async {
+          events.add(MapEntry(name, properties));
+        },
+      );
+
+      expect(
+        () => service.launch(
+          phone: '9876543210',
+          message: 'Receipt',
+          serviceType: 'fiber',
+        ),
+        throwsA(isA<ReceiptLaunchException>()),
+      );
+      expect(events, isEmpty);
+
+      final successful = WhatsAppReceiptService(
+        launchUrl: (_) async => true,
+        recordTelemetry: (name, properties) async {
+          events.add(MapEntry(name, properties));
+        },
+      );
+      await successful.launch(
+        phone: '9876543210',
+        message: 'Receipt',
+        serviceType: 'fiber',
+      );
+      expect(events.single.key, 'whatsapp_receipt_dispatched');
+      expect(events.single.value, {
+        'service_type': 'fiber',
+        'used_web_fallback': false,
+      });
+    });
+
     test('throws a clear error when both delivery paths fail', () async {
       final service = WhatsAppReceiptService(launchUrl: (_) async => false);
 

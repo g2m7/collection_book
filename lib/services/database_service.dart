@@ -10,13 +10,21 @@ import '../models/import_result.dart';
 import 'backup_service.dart';
 
 class DatabaseService {
-  static const databaseVersion = 7;
+  static const databaseVersion = 8;
 
   static final DatabaseService _instance = DatabaseService._();
   factory DatabaseService() => _instance;
-  DatabaseService._();
+  DatabaseService._() : _openDatabaseForTesting = null;
+
+  @visibleForTesting
+  DatabaseService.forTesting(
+    Database database, {
+    Future<Database> Function(String path)? openDatabaseForTesting,
+  }) : _db = database,
+       _openDatabaseForTesting = openDatabaseForTesting;
 
   Database? _db;
+  final Future<Database> Function(String path)? _openDatabaseForTesting;
 
   Future<Database> get database async {
     _db ??= await _initDb();
@@ -26,6 +34,7 @@ class DatabaseService {
   Future<Database> _initDb() async {
     final dbPath = await getDatabasesPath();
     final path = p.join(dbPath, 'rent_ledger.db');
+    if (_openDatabaseForTesting != null) return _openDatabaseForTesting(path);
     return openDatabase(
       path,
       version: databaseVersion,
@@ -96,6 +105,9 @@ class DatabaseService {
     if (oldVersion < 7) {
       await createPhoneIndex(db);
     }
+    if (oldVersion < 8) {
+      await createAnalyticsEvents(db);
+    }
   }
 
   @visibleForTesting
@@ -158,6 +170,33 @@ class DatabaseService {
     await createPhoneIndex(db);
 
     await _createImportTables(db);
+    await createAnalyticsEvents(db);
+  }
+
+  @visibleForTesting
+  static Future<void> createAnalyticsEvents(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS analytics_milestones (
+        milestone TEXT PRIMARY KEY,
+        created_at INTEGER NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS analytics_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id TEXT NOT NULL UNIQUE,
+        event_name TEXT NOT NULL,
+        properties_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        attempt_count INTEGER NOT NULL DEFAULT 0,
+        next_attempt_at INTEGER NOT NULL DEFAULT 0,
+        last_error TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_analytics_events_flush
+      ON analytics_events(next_attempt_at, created_at)
+    ''');
   }
 
   static Future<void> _createImportTables(Database db) async {
@@ -223,7 +262,15 @@ class DatabaseService {
 
   Future<void> deleteArea(int id) async {
     final db = await database;
-    await db.delete('areas', where: 'id = ?', whereArgs: [id]);
+    await db.transaction((txn) async {
+      await txn.update(
+        'subscribers',
+        {'area_id': null},
+        where: 'area_id = ?',
+        whereArgs: [id],
+      );
+      await txn.delete('areas', where: 'id = ?', whereArgs: [id]);
+    });
   }
 
   // --------------- SUBSCRIBERS ---------------
@@ -861,14 +908,56 @@ class DatabaseService {
     _db = await openDatabase(targetPath);
   }
 
-  /// Wipe all app data and re-create tables from scratch.
+  /// Wipes all app data and re-creates tables, restoring the original file if
+  /// deletion or recreation fails.
   Future<void> resetAllData() async {
     await closeDb();
     final targetPath = await getDatabasePath();
     final file = File(targetPath);
-    if (await file.exists()) await file.delete();
-    // Re-open will trigger _onCreate, recreating all tables.
-    _db = await _initDb();
+    final originalExists = await file.exists();
+    File? backup;
+    if (originalExists) {
+      backup = File(
+        '$targetPath.reset-$pid-${DateTime.now().microsecondsSinceEpoch}.tmp',
+      );
+      try {
+        await file.copy(backup.path);
+      } catch (_) {
+        if (await backup.exists()) await backup.delete();
+        rethrow;
+      }
+    }
+
+    try {
+      if (originalExists) await file.delete();
+      // Re-open will trigger _onCreate, recreating all tables.
+      _db = await _initDb();
+    } catch (error, stackTrace) {
+      try {
+        if (_db != null) await _db!.close();
+        _db = null;
+        if (await file.exists()) await file.delete();
+        if (originalExists) {
+          if (backup == null || !await backup.exists()) {
+            throw StateError('Database backup is unavailable.');
+          }
+          await backup.copy(targetPath);
+        }
+        // Open the restored original, or an empty database when none existed.
+        _db = await _initDb();
+      } catch (restorationError) {
+        Error.throwWithStackTrace(
+          StateError(
+            'Database reset failed ($error), and restoring the original '
+            'database also failed ($restorationError).',
+          ),
+          stackTrace,
+        );
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    } finally {
+      if (backup != null && await backup.exists()) await backup.delete();
+    }
   }
 
   DateTime? _parseCreatedAt(String? value) {

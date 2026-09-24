@@ -106,6 +106,7 @@ class _ImportHistoryScreenState extends State<ImportHistoryScreen> {
 
     return Card(
       child: InkWell(
+        key: AppKeys.importHistoryRun(run.id!),
         onTap: run.hasErrors && run.id != null
             ? () {
                 Navigator.push(
