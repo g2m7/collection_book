@@ -4,6 +4,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../services/database_service.dart';
 import '../services/app_mode_service.dart';
 import '../theme/app_theme.dart';
+import '../app_keys.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -119,6 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _ModePill(mode: mode, onToggle: _modeService.toggle),
               const SizedBox(width: 4),
               IconButton(
+                key: AppKeys.homeSubscribers,
                 icon: Icon(PhosphorIcons.users(PhosphorIconsStyle.bold)),
                 tooltip: 'All Subscribers',
                 onPressed: () => Navigator.pushNamed(
@@ -127,6 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ).then((_) => _loadData()),
               ),
               IconButton(
+                key: AppKeys.homeSettings,
                 icon: Icon(PhosphorIcons.gear(PhosphorIconsStyle.bold)),
                 tooltip: 'Settings',
                 onPressed: () => Navigator.pushNamed(
@@ -177,6 +180,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
           floatingActionButton: FloatingActionButton.extended(
+            key: AppKeys.homeRecordPayment,
             onPressed: () => Navigator.pushNamed(
               context,
               '/record-payment',
@@ -198,6 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconButton(
+            key: AppKeys.homePreviousMonth,
             icon: Icon(
               PhosphorIcons.caretLeft(PhosphorIconsStyle.bold),
               color: _canGoBack ? Colors.white : Colors.white38,
@@ -205,6 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: _canGoBack ? () => _changeMonth(-1) : null,
           ),
           GestureDetector(
+            key: AppKeys.homeMonthLabel,
             onTap: () async {
               final now = DateTime.now();
               setState(() {
@@ -230,6 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           IconButton(
+            key: AppKeys.homeNextMonth,
             icon: Icon(
               PhosphorIcons.caretRight(PhosphorIconsStyle.bold),
               color: Colors.white,
@@ -618,6 +625,7 @@ class _ModePill extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: GestureDetector(
+        key: AppKeys.homeModeToggle,
         onTap: onToggle,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),

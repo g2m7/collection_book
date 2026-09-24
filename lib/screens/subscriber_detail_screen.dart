@@ -7,6 +7,7 @@ import '../services/database_service.dart';
 import '../services/receipt_settings_service.dart';
 import '../services/whatsapp_receipt_service.dart';
 import '../theme/app_theme.dart';
+import '../app_keys.dart';
 
 class SubscriberDetailScreen extends StatefulWidget {
   final int subscriberId;
@@ -98,6 +99,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
         title: Text(sub.name),
         actions: [
           IconButton(
+            key: AppKeys.subscriberDetailEdit,
             icon: Icon(PhosphorIcons.pencilSimple(PhosphorIconsStyle.bold)),
             tooltip: 'Edit',
             onPressed: () => Navigator.pushNamed(
@@ -107,6 +109,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
             ).then((_) => _loadData()),
           ),
           IconButton(
+            key: AppKeys.subscriberDetailDelete,
             icon: Icon(PhosphorIcons.trash(PhosphorIconsStyle.bold)),
             tooltip: 'Delete',
             onPressed: () => _confirmDelete(sub),
@@ -125,6 +128,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        key: AppKeys.subscriberDetailRecordPayment,
         onPressed: () => Navigator.pushNamed(
           context,
           '/record-payment',
@@ -274,6 +278,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconButton(
+            key: AppKeys.subscriberDetailYearPrevious,
             icon: Icon(PhosphorIcons.caretLeft(PhosphorIconsStyle.bold)),
             onPressed: canGoBack
                 ? () {
@@ -298,6 +303,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
             ),
           ),
           IconButton(
+            key: AppKeys.subscriberDetailYearNext,
             icon: Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold)),
             onPressed: canGoForward
                 ? () {
@@ -517,6 +523,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
                       child: payment == null
                           ? null
                           : IconButton(
+                              key: AppKeys.subscriberDetailSendReceipt,
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints.tightFor(
                                 width: 40,

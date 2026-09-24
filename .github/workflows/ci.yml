@@ -4,6 +4,13 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_android_patrol:
+        description: Run the opt-in Android emulator Patrol suite
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -14,13 +21,50 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: 3.35.6
           channel: stable
       - run: flutter pub get
-      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: dart format --output=none --set-exit-if-changed lib test patrol_test
       - run: flutter analyze
       - run: flutter test
+      - name: Install pinned Patrol CLI
+        run: dart pub global activate patrol_cli 4.8.0
+      - name: Check Patrol environment
+        run: patrol doctor
+      - name: Build Android app and Patrol harness
+        run: patrol build android --debug
+
+  patrol-android:
+    name: Patrol Android emulator (opt-in)
+    if: github.event_name == 'workflow_dispatch' && inputs.run_android_patrol
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.35.6
+          channel: stable
+      - run: flutter pub get
+      - run: dart pub global activate patrol_cli 4.8.0
+      - run: flutter devices
+      - run: patrol doctor
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: patrol test
 
   bun:
     name: Bun and Worker checks

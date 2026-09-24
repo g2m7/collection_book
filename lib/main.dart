@@ -12,11 +12,15 @@ import 'services/database_service.dart';
 import 'services/app_mode_service.dart';
 import 'services/receipt_settings_service.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+Future<void> initializeCollectionBookApp() async {
   await DatabaseService().database;
   await AppModeService().init();
   await ReceiptSettingsService().init();
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeCollectionBookApp();
   runApp(const CollectionBookApp());
 }
 

@@ -7,6 +7,7 @@ import '../services/database_service.dart';
 import '../services/app_mode_service.dart';
 import '../services/receipt_settings_service.dart';
 import '../services/whatsapp_receipt_service.dart';
+import '../app_keys.dart';
 
 class RecordPaymentScreen extends StatefulWidget {
   final int? subscriberId;
@@ -378,7 +379,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                         });
 
                       return DropdownButtonFormField<int>(
-                        key: ValueKey('sub_${_month}_$_year'),
+                        key: AppKeys.paymentSubscriber,
                         initialValue: _selectedSubscriber?.id,
                         decoration: const InputDecoration(
                           hintText: 'Select subscriber…',
@@ -586,6 +587,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
+                    key: AppKeys.paymentAmount,
                     controller: _amountController,
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -610,6 +612,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: OutlinedButton.icon(
+                      key: AppKeys.paymentClearDue,
                       onPressed: _openClearDueHelper,
                       icon: Icon(
                         PhosphorIcons.magicWand(PhosphorIconsStyle.bold),
@@ -637,6 +640,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
+                    key: AppKeys.paymentAdjustment,
                     controller: _adjustmentController,
                     keyboardType: const TextInputType.numberWithOptions(
                       signed: true,
@@ -721,6 +725,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
+                    key: AppKeys.paymentNote,
                     controller: _noteController,
                     decoration: const InputDecoration(
                       hintText: 'e.g., new connection charge…',
@@ -734,6 +739,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                   SizedBox(
                     height: 52,
                     child: ElevatedButton(
+                      key: AppKeys.paymentSaveAndSend,
                       onPressed: _saving
                           ? null
                           : () => _save(sendReceipt: true),
@@ -753,6 +759,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                   SizedBox(
                     height: 48,
                     child: OutlinedButton(
+                      key: AppKeys.paymentSave,
                       onPressed: _saving ? null : _save,
                       child: const Text('Save Only'),
                     ),

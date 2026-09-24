@@ -10,6 +10,7 @@ import '../services/app_mode_service.dart';
 import '../services/receipt_settings_service.dart';
 import 'import_wizard_screen.dart';
 import 'import_history_screen.dart';
+import '../app_keys.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -117,12 +118,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // ---- Receipts ----
                 _sectionHeader('WhatsApp Receipts'),
                 _tile(
+                  key: AppKeys.settingsReceiptLanguage,
                   icon: PhosphorIcons.translate(PhosphorIconsStyle.bold),
                   title: 'Receipt Language',
                   subtitle: _receiptSettings.language.label,
                   onTap: _chooseReceiptLanguage,
                 ),
                 _tile(
+                  key: AppKeys.settingsBusinessName,
                   icon: PhosphorIcons.buildings(PhosphorIconsStyle.bold),
                   title: 'Business Name',
                   subtitle: _receiptSettings.businessNameNotifier.value,
@@ -139,12 +142,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // ---- Import Center ----
                 _sectionHeader('Import Center'),
                 _tile(
+                  key: AppKeys.settingsImportTv,
                   icon: PhosphorIcons.televisionSimple(PhosphorIconsStyle.bold),
                   title: 'Import TV Subscribers',
                   subtitle: 'Import from spreadsheet into Cable TV',
                   onTap: () => _openImportWizard('tv'),
                 ),
                 _tile(
+                  key: AppKeys.settingsImportFiber,
                   icon: PhosphorIcons.globeHemisphereWest(
                     PhosphorIconsStyle.bold,
                   ),
@@ -153,6 +158,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: () => _openImportWizard('fiber'),
                 ),
                 _tile(
+                  key: AppKeys.settingsImportHistory,
                   icon: PhosphorIcons.clockCounterClockwise(
                     PhosphorIconsStyle.bold,
                   ),
@@ -171,6 +177,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // ---- Backup & Restore ----
                 _sectionHeader('Backup & Restore'),
                 _tile(
+                  key: AppKeys.settingsBackup,
                   icon: PhosphorIcons.archive(PhosphorIconsStyle.bold),
                   title: 'Backup Now',
                   subtitle: _lastBackup != null
@@ -179,12 +186,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: _doBackup,
                 ),
                 _tile(
+                  key: AppKeys.settingsShareBackup,
                   icon: PhosphorIcons.shareNetwork(PhosphorIconsStyle.bold),
                   title: 'Share Backup',
                   subtitle: 'Share database file via any app',
                   onTap: _shareBackup,
                 ),
                 _tile(
+                  key: AppKeys.settingsRestore,
                   icon: PhosphorIcons.arrowsClockwise(PhosphorIconsStyle.bold),
                   title: 'Restore from Backup',
                   subtitle: 'Pick a backup file to restore',
@@ -213,6 +222,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     vertical: 8,
                   ),
                   child: OutlinedButton.icon(
+                    key: AppKeys.settingsAddArea,
                     onPressed: _addArea,
                     icon: Icon(PhosphorIcons.plus(PhosphorIconsStyle.bold)),
                     label: const Text('Add Area'),
@@ -233,6 +243,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1),
                 _sectionHeader('Danger Zone'),
                 _tile(
+                  key: AppKeys.settingsReset,
                   icon: PhosphorIcons.warning(PhosphorIconsStyle.bold),
                   title: 'Reset App',
                   subtitle: 'Delete all data and start fresh',
@@ -262,6 +273,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: ReceiptLanguage.values
                   .map(
                     (language) => RadioListTile<ReceiptLanguage>(
+                      key: switch (language) {
+                        ReceiptLanguage.english =>
+                          AppKeys.receiptLanguageEnglish,
+                        ReceiptLanguage.hindi => AppKeys.receiptLanguageHindi,
+                        ReceiptLanguage.marathi =>
+                          AppKeys.receiptLanguageMarathi,
+                        ReceiptLanguage.bengali =>
+                          AppKeys.receiptLanguageBengali,
+                        ReceiptLanguage.tamil => AppKeys.receiptLanguageTamil,
+                      },
                       value: language,
                       title: Text(language.label),
                     ),
@@ -285,6 +306,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Business Name'),
         content: TextFormField(
+          key: AppKeys.receiptBusinessNameField,
           initialValue: initialName,
           autofocus: true,
           textCapitalization: TextCapitalization.words,
@@ -300,6 +322,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           FilledButton(
+            key: AppKeys.receiptBusinessNameSave,
             onPressed: () => Navigator.pop(context, editedName),
             child: const Text('Save'),
           ),
@@ -328,6 +351,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   ) {
     final selected = option == current;
     return InkWell(
+      key: option == ServiceMode.tv
+          ? AppKeys.settingsModeTv
+          : AppKeys.settingsModeFiber,
       onTap: () => _modeService.setMode(option),
       borderRadius: BorderRadius.circular(12),
       child: Padding(
@@ -390,6 +416,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _tile({
+    Key? key,
     required IconData icon,
     required String title,
     String? subtitle,
@@ -397,6 +424,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Widget? trailing,
   }) {
     return ListTile(
+      key: key,
       leading: Icon(icon, color: const Color(0xFF1565C0)),
       title: Text(title),
       subtitle: subtitle != null
@@ -507,6 +535,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Add Area'),
         content: TextField(
+          key: AppKeys.areaNameField,
           controller: controller,
           decoration: const InputDecoration(hintText: 'Area name…'),
           textCapitalization: TextCapitalization.words,
@@ -519,6 +548,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
+            key: AppKeys.areaNameSave,
             onPressed: () => Navigator.pop(context, controller.text),
             child: const Text('Add'),
           ),

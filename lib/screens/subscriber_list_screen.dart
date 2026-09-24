@@ -6,6 +6,7 @@ import '../models/area.dart';
 import '../services/database_service.dart';
 import '../services/app_mode_service.dart';
 import '../theme/app_theme.dart';
+import '../app_keys.dart';
 
 enum SortOption { nameAsc, nameDsc, dueHigh, dueLow, rentHigh, rentLow }
 
@@ -182,6 +183,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
         ),
         actions: [
           IconButton(
+            key: AppKeys.subscriberListAdd,
             icon: Icon(PhosphorIcons.userPlus(PhosphorIconsStyle.bold)),
             tooltip: 'Add Subscriber',
             onPressed: () => Navigator.pushNamed(
@@ -198,6 +200,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
             color: Colors.white,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: TextField(
+              key: AppKeys.subscriberListSearch,
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Search by name, alias, or VC number…',
@@ -206,6 +209,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
                 ),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
+                        key: AppKeys.subscriberListClearSearch,
                         icon: Icon(PhosphorIcons.x(PhosphorIconsStyle.bold)),
                         tooltip: 'Clear Search',
                         onPressed: () {
@@ -255,6 +259,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                   child: InkWell(
+                    key: AppKeys.subscriberListFilters,
                     borderRadius: BorderRadius.circular(8),
                     onTap: () => setState(() => _showFilters = !_showFilters),
                     child: Padding(
@@ -389,6 +394,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        key: AppKeys.subscriberListFab,
         onPressed: () => Navigator.pushNamed(
           context,
           '/add-subscriber',
@@ -507,6 +513,13 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
     return Padding(
       padding: const EdgeInsets.only(right: 6),
       child: FilterChip(
+        key: switch (value) {
+          'all' => AppKeys.subscriberFilterAll,
+          'unpaid' => AppKeys.subscriberFilterUnpaid,
+          'paid' => AppKeys.subscriberFilterPaid,
+          'overpaid' => AppKeys.subscriberFilterOverpaid,
+          _ => throw ArgumentError.value(value, 'value'),
+        },
         label: Text(label),
         selected: selected,
         onSelected: (_) {
@@ -525,6 +538,9 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
     return Padding(
       padding: const EdgeInsets.only(right: 6),
       child: FilterChip(
+        key: isInactive
+            ? AppKeys.subscriberStatusInactive
+            : AppKeys.subscriberStatusActive,
         label: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

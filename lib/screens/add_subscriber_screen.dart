@@ -7,6 +7,7 @@ import '../models/subscriber.dart';
 import '../services/database_service.dart';
 import '../services/app_mode_service.dart';
 import '../services/whatsapp_receipt_service.dart';
+import '../app_keys.dart';
 
 class AddSubscriberScreen extends StatefulWidget {
   final int? subscriberId;
@@ -18,7 +19,7 @@ class AddSubscriberScreen extends StatefulWidget {
 
 class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
   final _db = DatabaseService();
-  final _formKey = GlobalKey<FormState>();
+  final _formKey = AppKeys.subscriberForm;
   final _nameController = TextEditingController();
   final _aliasController = TextEditingController();
   final _vcController = TextEditingController();
@@ -162,6 +163,7 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                 children: [
                   _label('Name *'),
                   TextFormField(
+                    key: AppKeys.subscriberName,
                     controller: _nameController,
                     decoration: const InputDecoration(hintText: 'Full name…'),
                     textCapitalization: TextCapitalization.words,
@@ -174,6 +176,7 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                   const SizedBox(height: 16),
                   _label('Alias Name'),
                   TextFormField(
+                    key: AppKeys.subscriberAlias,
                     controller: _aliasController,
                     decoration: const InputDecoration(
                       hintText: 'Optional alias…',
@@ -202,6 +205,7 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                   const SizedBox(height: 16),
                   _label(_isFiber ? 'Account ID' : 'VC Number'),
                   TextFormField(
+                    key: AppKeys.subscriberIdentifier,
                     controller: _vcController,
                     decoration: InputDecoration(
                       hintText: _isFiber
@@ -218,6 +222,7 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                     const SizedBox(height: 16),
                     _label('Username'),
                     TextFormField(
+                      key: AppKeys.subscriberUsername,
                       controller: _usernameController,
                       decoration: const InputDecoration(
                         hintText: 'Login username…',
@@ -232,6 +237,7 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                   const SizedBox(height: 16),
                   _label('WhatsApp Phone'),
                   TextFormField(
+                    key: AppKeys.subscriberPhone,
                     controller: _phoneController,
                     decoration: const InputDecoration(
                       hintText: 'Mobile number for receipts…',
@@ -260,6 +266,7 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                   const SizedBox(height: 16),
                   _label('Monthly Rent *'),
                   TextFormField(
+                    key: AppKeys.subscriberRent,
                     controller: _rentController,
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -335,6 +342,7 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                   const SizedBox(height: 16),
                   _label('Previous Due (carry forward)'),
                   TextFormField(
+                    key: AppKeys.subscriberPreviousDue,
                     controller: _prevDueController,
                     keyboardType: const TextInputType.numberWithOptions(
                       signed: true,
@@ -385,6 +393,7 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                   SizedBox(
                     height: 52,
                     child: ElevatedButton(
+                      key: AppKeys.subscriberSave,
                       onPressed: _saving ? null : _save,
                       child: _saving
                           ? const CupertinoActivityIndicator(
@@ -456,6 +465,9 @@ class _ServiceSelector extends StatelessWidget {
     final selected = value == key;
     return Expanded(
       child: GestureDetector(
+        key: key == 'tv'
+            ? AppKeys.subscriberServiceTv
+            : AppKeys.subscriberServiceFiber,
         onTap: () => onChanged(key),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),

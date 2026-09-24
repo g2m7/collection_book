@@ -6,7 +6,7 @@ Canonical repository contract for the Collection Book Flutter app and its additi
 
 | Path | Scope |
 | --- | --- |
-| `lib/`, `test/`, `assets/`, `pubspec.yaml` | Root Flutter application and tests |
+| `lib/`, `test/`, `patrol_test/`, `assets/`, `pubspec.yaml` | Root Flutter application, lower-layer tests, and Patrol E2E tests |
 | `android/`, `ios/` | Root Flutter platform projects |
 | `packages/contracts/` | Shared TypeScript domain contracts and constants |
 | `services/` | Deployable services; `services/cbk-edge/` is the Worker |
@@ -30,13 +30,17 @@ The Flutter app stays at repository root. Do not move `lib/`, `test/`, `android/
 
 - Install dependencies: `flutter pub get`
 - Environment: `flutter doctor -v`
-- Format check: `dart format --output=none --set-exit-if-changed lib test`
+- Format check: `dart format --output=none --set-exit-if-changed lib test patrol_test`
 - Analyze: `flutter analyze`
-- Tests: `flutter test`
+- Unit/widget tests: `flutter test`
+- Patrol CLI: `dart pub global activate patrol_cli 4.8.0` (keep this version pinned)
+- Patrol environment: `patrol doctor`
+- Patrol Android compile gate: `patrol build android --debug` (optionally verify native assembly with `(cd android && ./gradlew :app:assembleDebugAndroidTest)` under JDK 17)
+- Patrol device run: `patrol test` (select a device with `patrol test --device <device_id>` when multiple are connected)
 - Debug APK: `flutter build apk --debug`
 - Run: `flutter run` (or `flutter run -d <device_id>`)
 
-Before completing an affected Flutter task, run the targeted tests plus `dart format` and `flutter analyze`. Keep documentation synchronized with behavior changes. Production Android release builds require real signing properties from ignored `android/key.properties`; relative `storeFile` values resolve from the `android/` root Gradle-project directory, and the debug signing key must never be used for a release artifact.
+Before completing an affected Flutter task, run the targeted tests plus `dart format` and `flutter analyze`. Changes to user-visible behavior require relevant Patrol journey updates; run `patrol test` when an Android device/emulator is available, otherwise keep execution honestly pending. Normal CI must pass the Patrol compile gate, but mandatory per-PR emulator execution is not required because hosted emulators are slow and can be flaky; the separately invokable CI job is opt-in. Keep documentation synchronized with behavior changes. Production Android release builds require real signing properties from ignored `android/key.properties`; relative `storeFile` values resolve from the `android/` root Gradle-project directory, and the debug signing key must never be used for a release artifact.
 
 ### Bun and Worker
 
@@ -130,12 +134,15 @@ Catch expected failures at file/database/device boundaries and surface useful me
 
 ## Testing Guidance
 
-Add or update tests for import format detection, required-field validation, service filtering, migration-sensitive logic, and backend route/security behavior. Prefer deterministic fixtures. The Worker suite must cover health, landing rendering, referral validation, cookie/redirect/referrer behavior, methods/404, asset links, headers, and injection resistance.
+Patrol is the repository standard for end-to-end coverage of implemented app surfaces. Keep a small number of complete journeys in `patrol_test/`, use `lib/app_keys.dart` for stable interactive selectors, and call the shared bootstrap before pumping `CollectionBookApp`. Do not call `WidgetsFlutterBinding.ensureInitialized()`, `runApp()`, or use arbitrary sleeps inside Patrol tests. Android test-orchestrator package clearing is the primary per-test isolation; keep the existing `DatabaseService` singleton.
+
+Retain `test/` unit and widget tests for lower layers. Add or update tests for import format detection, required-field validation, service filtering, migration-sensitive logic, and backend route/security behavior. Prefer deterministic fixtures. Native file pickers, installed WhatsApp/browser handling, share targets, and physical-device behavior remain explicit opt-in/manual scenarios unless a deterministic fixture and device contract are available; never add a fake required test around them. The Worker suite must cover health, landing rendering, referral validation, cookie/redirect/referrer behavior, methods/404, asset links, headers, and injection resistance.
 
 ## Pre-Completion Checklist
 
 - [ ] Relevant code and documentation are formatted.
-- [ ] Flutter analyze and affected Flutter tests pass, or any pre-existing failure is identified.
+- [ ] Flutter analyze, unit/widget tests, Patrol compile gate, and affected Patrol device journeys pass; any unavailable device-only run is explicitly identified.
+- [ ] User-visible changes have updated Patrol coverage and stable production keys where needed.
 - [ ] Bun format check, typecheck, tests, and Worker dry-run pass.
 - [ ] `git diff --check` passes.
 - [ ] `git diff --cached` is empty unless the user explicitly authorized staging.

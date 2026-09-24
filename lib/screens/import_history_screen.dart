@@ -4,6 +4,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../models/import_run.dart';
 import '../services/database_service.dart';
 import 'import_run_detail_screen.dart';
+import '../app_keys.dart';
 
 class ImportHistoryScreen extends StatefulWidget {
   const ImportHistoryScreen({super.key});
@@ -40,6 +41,7 @@ class _ImportHistoryScreenState extends State<ImportHistoryScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _runs.isEmpty
           ? Center(
+              key: AppKeys.importHistoryEmpty,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [

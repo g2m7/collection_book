@@ -4,6 +4,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../models/import_result.dart';
 import '../services/import_service.dart';
 import '../services/app_mode_service.dart';
+import '../app_keys.dart';
 
 class ImportWizardScreen extends StatefulWidget {
   /// Optionally pre-select the service type ('tv' or 'fiber').
@@ -460,6 +461,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
           SizedBox(
             height: 52,
             child: FilledButton(
+              key: AppKeys.importContinue,
               onPressed: (_startMonth != null && _startYear != null)
                   ? _nextStep
                   : null,
@@ -479,6 +481,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
   ) {
     final selected = _serviceType == mode.key;
     return GestureDetector(
+      key: mode == ServiceMode.tv ? AppKeys.importTv : AppKeys.importFiber,
       onTap: () => setState(() => _serviceType = mode.key),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
@@ -610,6 +613,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<int>(
+                      key: AppKeys.importStartMonth,
                       value: _startMonth,
                       isExpanded: true,
                       hint: Text(
@@ -648,6 +652,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<int>(
+                      key: AppKeys.importStartYear,
                       value: _startYear,
                       isExpanded: true,
                       hint: Text(
@@ -708,6 +713,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
             )
           else ...[
             GestureDetector(
+              key: AppKeys.importPickFile,
               onTap: _pickFile,
               child: Container(
                 height: 160,

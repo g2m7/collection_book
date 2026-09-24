@@ -24,6 +24,15 @@ class AppModeService {
 
   ServiceMode get mode => modeNotifier.value;
 
+  /// Clears only the in-memory singleton value for restart-style tests.
+  ///
+  /// Shared preferences are intentionally left untouched so the following
+  /// [init] verifies that production persistence restored the saved mode.
+  @visibleForTesting
+  void resetInMemoryForTesting() {
+    modeNotifier.value = ServiceMode.tv;
+  }
+
   /// Call once at app start to restore persisted mode.
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
