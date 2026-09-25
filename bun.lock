@@ -17,6 +17,9 @@
     "packages/play-store-metadata": {
       "name": "@collection-book/play-store-metadata",
       "version": "0.1.0",
+      "dependencies": {
+        "@collection-book/contracts": "workspace:*",
+      },
     },
     "services/cbk-edge": {
       "name": "@collection-book/cbk-edge",

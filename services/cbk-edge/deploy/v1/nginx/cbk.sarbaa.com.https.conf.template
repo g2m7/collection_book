@@ -1,0 +1,78 @@
+# cbk.sarbaa.com — stage 2 template, rendered only after Certbot has issued a
+# certificate. This file is a template on purpose: the two certificate paths
+# below are placeholders and nginx must never load this file as-is.
+#
+# Render it with (the shell redirection runs as your own user, so the file is
+# written through sudo tee; without it the target stays unwritable and nginx
+# silently keeps serving the old vhost):
+#   sudo sed -e "s|__CERTBOT_FULLCHAIN__|/etc/letsencrypt/live/cbk.sarbaa.com/fullchain.pem|" \
+#            -e "s|__CERTBOT_PRIVKEY__|/etc/letsencrypt/live/cbk.sarbaa.com/privkey.pem|" \
+#            /opt/cbk-edge/current/services/cbk-edge/deploy/v1/nginx/cbk.sarbaa.com.https.conf.template \
+#     | sudo tee /etc/nginx/sites-available/cbk.sarbaa.com > /dev/null
+#   sudo nginx -t && sudo systemctl reload nginx
+#
+# This file overwrites the stage 1 file in place: both stages install to
+# /etc/nginx/sites-available/cbk.sarbaa.com, so there is nothing to delete and
+# no second vhost can claim server_name cbk.sarbaa.com.
+#
+# The redirect target is the literal host, never $host, so a spoofed Host header
+# cannot turn the HTTP block into an open redirect.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name cbk.sarbaa.com;
+
+    server_tokens off;
+
+    # Renewals keep using the ACME webroot, so this block is never redirected.
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/html;
+        default_type "text/plain";
+    }
+
+    location / {
+        return 301 https://cbk.sarbaa.com$request_uri;
+    }
+}
+
+server {
+    # Ubuntu 22.04 ships nginx 1.18, which enables HTTP/2 on the listen
+    # directive rather than through the newer standalone `http2 on` syntax.
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name cbk.sarbaa.com;
+
+    server_tokens off;
+    client_max_body_size 128k;
+
+    ssl_certificate __CERTBOT_FULLCHAIN__;
+    ssl_certificate_key __CERTBOT_PRIVKEY__;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:CBK_EDGE_TLS:10m;
+    ssl_session_tickets off;
+
+    # No Strict-Transport-Security here on purpose. The Bun adapter already sets
+    # it on every proxied response, and declaring it again at the proxy would
+    # send the header twice to the same client.
+
+    location / {
+        proxy_pass http://127.0.0.1:8787;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header Connection "";
+
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 15s;
+        proxy_read_timeout 15s;
+        proxy_buffering on;
+        proxy_request_buffering on;
+    }
+}

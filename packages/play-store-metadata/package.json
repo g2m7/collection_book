@@ -11,5 +11,8 @@
     "check": "bun run src/cli.ts --check",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "bun test"
+  },
+  "dependencies": {
+    "@collection-book/contracts": "workspace:*"
   }
 }

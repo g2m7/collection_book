@@ -2,6 +2,16 @@
 
 This document defines the exact formatting templates, field variables, and localized phrase matrices for digital receipts sent through the native Android WhatsApp intent.
 
+> **Shipped copy is authoritative in code.** The strings that actually reach a
+> subscriber live in `lib/services/whatsapp_receipt_service.dart`; this file is
+> the design reference. The referral footer in every language may only ask
+> another operator to try the app. Collection Book has no subscriber cap, no
+> free tier, and no paid plan, so a "free" or "up to N subscribers" promise in
+> any locale is an unsupported claim and is rejected by
+> `findUnsupportedClaims` in `packages/contracts`, scanned over this Dart file
+> by `services/cbk-edge/test/receipt_claims.test.ts` and asserted per locale by
+> `test/whatsapp_receipt_claims_test.dart`.
+
 ---
 
 ## 1. Dynamic Receipt Variables
@@ -39,7 +49,7 @@ This document defines the exact formatting templates, field variables, and local
 🙏 समय पर भुगतान करने के लिए धन्यवाद!
 
 📱 Managed via Collection Book App
-👉 क्या आप केबल/WiFi ऑपरेटर हैं? 100 कनेक्शन तक फ्री ऐप डाउनलोड करें:
+👉 क्या आप केबल/WiFi ऑपरेटर हैं? किसी और ऑपरेटर को साझा करें, ग्राहकों की कोई सीमा नहीं:
 {{REF_URL}}
 ```
 
@@ -59,7 +69,7 @@ This document defines the exact formatting templates, field variables, and local
 🙏 वेळेवर बिल भरल्याबद्दल धन्यवाद!
 
 📱 Managed via Collection Book App
-👉 आपण केबल/इंटरनेट ऑपरेटर आहात का? १०० ग्राहकांसाठी मोफत अ‍ॅप:
+👉 आपण केबल/इंटरनेट ऑपरेटर आहात का? दुसऱ्या ऑपरेटरला पाठवा, ग्राहकांची मर्यादा नाही:
 {{REF_URL}}
 ```
 
@@ -79,7 +89,7 @@ This document defines the exact formatting templates, field variables, and local
 🙏 সময়মতো বিল পরিশোধ করার জন্য ধন্যবাদ!
 
 📱 Managed via Collection Book App
-👉 আপনি কি কেবল বা ইন্টারনেট অপারেটর? ১০০ গ্রাহক পর্যন্ত ফ্রি অ্যাপ:
+👉 আপনি কি কেবল বা ইন্টারনেট অপারেটর? অন্য অপারেটরকে শেয়ার করুন, গ্রাহক সংখ্যার কোনো সীমা নেই:
 {{REF_URL}}
 ```
 
@@ -99,7 +109,7 @@ This document defines the exact formatting templates, field variables, and local
 🙏 சரியான நேரத்தில் கட்டணம் செலுத்தியதற்கு நன்றி!
 
 📱 Managed via Collection Book App
-👉 நீங்கள் கேபிள்/வைஃபை ஆபரேட்டரா? 100 இணைப்புகள் இலவசம்:
+👉 நீங்கள் கேபிள்/வைஃபை ஆபரேட்டரா? மற்றொரு ஆபரேட்டருக்குப் பகிரவும், வாடிக்கையாளர் எண்ணிக்கைக்கு வரம்பு இல்லை:
 {{REF_URL}}
 ```
 
@@ -119,7 +129,7 @@ This document defines the exact formatting templates, field variables, and local
 🙏 Thank you for your payment!
 
 📱 Managed via Collection Book App
-👉 Are you a Cable/WiFi Operator? Try Free (up to 100 subs):
+👉 Are you a Cable/WiFi Operator? Refer another operator, no subscriber limit:
 {{REF_URL}}
 ```
 
@@ -131,4 +141,4 @@ When the operator opens the app for the first time, an anonymous, unique 6-chara
 * Structure: `https://cbk.sarbaa.com/r/{OPERATOR_CODE}`
 * Edge Redirection: The Cloudflare Edge shortener redirects to:
   `https://play.google.com/store/apps/details?id=com.sarbaa.cbk&referrer=utm_source%3Dcbk_edge%26utm_medium%3Dreferral%26utm_campaign%3D{OPERATOR_CODE}`
-* Viral Loop Reward: When a referred operator installs and upgrades, the referring operator earns 1 month of free Starter tier extension.
+* Viral Loop Reward: **not implemented.** There is no plan, upgrade, or reward system in the shipped app, so no receipt, page, or listing may promise one. Referral tracking today ends at the click log and the 30-day first-party cookie.

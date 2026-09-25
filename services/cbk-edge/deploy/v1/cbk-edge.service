@@ -1,0 +1,34 @@
+[Unit]
+Description=Collection Book cbk-edge landing and referral edge (Bun on loopback)
+Documentation=https://cbk.sarbaa.com/privacy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cbk-edge
+Group=cbk-edge
+WorkingDirectory=/opt/cbk-edge/current
+# Loopback only: nginx terminates TLS and is the only public listener.
+Environment=CBK_EDGE_HOST=127.0.0.1
+Environment=CBK_EDGE_PORT=8787
+# Read after the Environment= defaults above, so this file can override them.
+EnvironmentFile=/etc/cbk-edge/cbk-edge.env
+ExecStart=/opt/cbk-edge/runtime/bun-1.3.4/bun run /opt/cbk-edge/current/services/cbk-edge/src/vps_server.ts
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cbk-edge
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

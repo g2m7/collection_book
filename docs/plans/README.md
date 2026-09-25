@@ -67,13 +67,14 @@ Brief summary of the feature, user problem solved, and expected business/technic
 
 ## 📚 Plan Directory Index
 
-This index lists all **10** plan directories in the repository, including the
-GTM implementation proposals, the cross-cutting Patrol verification plan, and
-the future GST workflow plan:
+This index lists all **11** plan directories in the repository, including the
+GTM implementation proposals, the cross-cutting Patrol verification plan, the
+future GST workflow plan, and the VPS landing/privacy launch plan:
 
 | Plan Directory | Focus Area | Key Architectural Deliverables |
 | :--- | :--- | :--- |
 | **[`monorepo-cbk-edge/`](monorepo-cbk-edge/plan.md)** | **Monorepo & CBK Edge Vertical Slice** | Additive Bun workspaces, shared referral contracts, privacy-safe Cloudflare Worker landing/referral routes, Android asset links, and independent CI. |
+| **[`cbk-vps-landing-launch/`](cbk-vps-landing-launch/plan.md)** | **VPS Landing, Privacy & Launch** | Truthful no-JS landing page with honest Google Play availability states, `/privacy` policy, a Bun runtime adapter around `handleRequest`, versioned systemd/nginx deployment assets, and shared claim scanning for customer-facing copy. |
 | **[`gtm-in-app-viral-receipts/`](gtm-in-app-viral-receipts/plan.md)** | **Viral Loop & WhatsApp Receipts** | SQLite v7 phone-index migration, native Android `whatsapp://send` intent engine, five-language templates, and referral footer linked to the separate CBK edge plan. |
 | **[`gtm-freemium-paywall-licensing/`](gtm-freemium-paywall-licensing/plan.md)** | **Freemium Paywall & Licensing** | 100-subscriber freemium cap guard, MSO bulk import grace gate, vernacular upgrade bottom sheet, and Ed25519 offline-durable cryptographic license tokens. |
 | **[`gtm-upi-checkout-edge-pipeline/`](gtm-upi-checkout-edge-pipeline/plan.md)** | **1-Tap UPI Checkout & Edge Worker** | Cloudflare Edge Gateway (Bun runtime), Android UPI intent (PhonePe/GPay), Razorpay HMAC webhook verification, and Convex plan mutation. |

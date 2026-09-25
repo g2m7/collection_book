@@ -313,6 +313,13 @@ class WhatsAppReceiptService {
     );
   }
 
+  /// Receipt copy for every supported [ReceiptLanguage].
+  ///
+  /// The closing referral line must stay honest: the app has no subscriber cap,
+  /// no free tier, and no paid plan, so no locale may promise one. The shared
+  /// `findUnsupportedClaims` scanner in `packages/contracts` and the guards in
+  /// `test/whatsapp_receipt_claims_test.dart` fail if a locale reintroduces a
+  /// cap or free-tier claim.
   static String _template(ReceiptLanguage language) {
     return switch (language) {
       ReceiptLanguage.english =>
@@ -331,7 +338,7 @@ class WhatsAppReceiptService {
 🙏 Thank you for your payment!
 
 📱 Managed via Collection Book App
-👉 Are you a Cable/WiFi Operator? Try Free (up to 100 subs):
+👉 Are you a Cable/WiFi Operator? Refer another operator, no subscriber limit:
 {{REF_URL}}''',
       ReceiptLanguage.hindi =>
         '''
@@ -349,7 +356,7 @@ class WhatsAppReceiptService {
 🙏 समय पर भुगतान करने के लिए धन्यवाद!
 
 📱 Collection Book ऐप से प्रबंधित
-👉 क्या आप केबल/WiFi ऑपरेटर हैं? 100 कनेक्शन तक मुफ़्त ऐप:
+👉 क्या आप केबल/WiFi ऑपरेटर हैं? किसी और ऑपरेटर को साझा करें, ग्राहकों की कोई सीमा नहीं:
 {{REF_URL}}''',
       ReceiptLanguage.marathi =>
         '''
@@ -367,7 +374,7 @@ class WhatsAppReceiptService {
 🙏 वेळेवर बिल भरल्याबद्दल धन्यवाद!
 
 📱 Collection Book अ‍ॅपद्वारे व्यवस्थापित
-👉 आपण केबल/इंटरनेट ऑपरेटर आहात का? १०० ग्राहकांसाठी मोफत:
+👉 आपण केबल/इंटरनेट ऑपरेटर आहात का? दुसऱ्या ऑपरेटरला पाठवा, ग्राहकांची मर्यादा नाही:
 {{REF_URL}}''',
       ReceiptLanguage.bengali =>
         '''
@@ -385,7 +392,7 @@ class WhatsAppReceiptService {
 🙏 সময়মতো বিল পরিশোধ করার জন্য ধন্যবাদ!
 
 📱 Collection Book অ্যাপ দিয়ে পরিচালিত
-👉 আপনি কি কেবল বা ইন্টারনেট অপারেটর? ১০০ গ্রাহক পর্যন্ত বিনামূল্যে:
+👉 আপনি কি কেবল বা ইন্টারনেট অপারেটর? অন্য অপারেটরকে শেয়ার করুন, গ্রাহক সংখ্যার কোনো সীমা নেই:
 {{REF_URL}}''',
       ReceiptLanguage.tamil =>
         '''
@@ -403,7 +410,7 @@ class WhatsAppReceiptService {
 🙏 சரியான நேரத்தில் கட்டணம் செலுத்தியதற்கு நன்றி!
 
 📱 Collection Book செயலியால் நிர்வகிக்கப்படுகிறது
-👉 நீங்கள் கேபிள்/வைஃபை ஆபரேட்டரா? 100 இணைப்புகள் இலவசம்:
+👉 நீங்கள் கேபிள்/வைஃபை ஆபரேட்டரா? மற்றொரு ஆபரேட்டருக்குப் பகிரவும், வாடிக்கையாளர் எண்ணிக்கைக்கு வரம்பு இல்லை:
 {{REF_URL}}''',
     };
   }

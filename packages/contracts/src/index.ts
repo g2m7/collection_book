@@ -3,8 +3,6 @@ export const androidPackageName = "com.sarbaa.cbk";
 export const referralCodeLength = 6;
 export const referralCodePattern = /^[A-Z0-9]{6}$/u;
 export const referralCookieName = "cbk_referral";
-export const defaultPlayStoreUrl =
-  "https://play.google.com/store/apps/details?id=com.sarbaa.cbk";
 
 export const telemetryBatchPath = "/api/v1/telemetry/batch";
 export const telemetryMaxEventsPerBatch = 50;
@@ -78,3 +76,11 @@ export function buildReferralUrl(value: unknown): string | null {
   const code = parseReferralCode(value);
   return code === null ? null : `${publicOrigin}/r/${code}`;
 }
+
+export {
+  findNumericCapClaims,
+  findUnsupportedClaims,
+  unsupportedClaimRules,
+  type UnsupportedClaimHit,
+  type UnsupportedClaimRule,
+} from "./claims";

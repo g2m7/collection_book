@@ -120,6 +120,7 @@ The receipt message follows a structured layout:
 - [x] Unit test: Phone number normalization edge cases (`9876543210`, `+91 98765 43210`, `09876543210`).
 - [x] Unit test: URI encoding, canonical referral construction, balance states, and vernacular receipt templates across all 5 languages.
 - [x] Unit test: app-intent and `wa.me` fallback behavior, including surfaced delivery failures.
+- [x] Unit test: no receipt locale advertises a subscriber cap or a free tier, enforced by the shared `findUnsupportedClaims` scanner over the Dart source and by per-locale assertions.
 
 ### Manual Verification (Pending)
 - [ ] Test payment creation and receipt dispatch on an Android physical device with WhatsApp installed.

@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "bun test",
     "build:worker": "WRANGLER_SEND_METRICS=false bun run --cwd services/cbk-edge build",
+    "serve:edge": "bun run services/cbk-edge/src/vps_server.ts",
     "aso:generate": "bun run packages/play-store-metadata/src/cli.ts",
     "aso:check": "bun run packages/play-store-metadata/src/cli.ts --check",
     "verify:bun": "bun run format:check && bun run typecheck && bun test && bun run aso:check && bun run build:worker",

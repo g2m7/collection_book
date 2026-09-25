@@ -9,6 +9,7 @@ import {
 } from "@collection-book/contracts";
 
 import { renderLandingPage } from "./landing";
+import { renderPrivacyPage } from "./privacy";
 import {
   readTelemetryJson,
   telemetryBatchError,
@@ -101,19 +102,35 @@ function notFound(): Response {
   return jsonResponse({ error: "not_found" }, 404, "no-store");
 }
 
+/**
+ * Shared answer for a runtime-level failure, so a runtime that cannot reach the
+ * routing code (the Bun adapter's `Bun.serve` error hook) still returns the
+ * same status, body shape, cache policy, and security headers as every response
+ * built by {@link handleRequest}.
+ */
+export function requestFailedResponse(): Response {
+  return jsonResponse({ error: "request_failed" }, 500, "no-store");
+}
+
+const htmlCacheControl = "public, max-age=300, stale-while-revalidate=60";
+
+function htmlResponse(html: string, cacheControl: string): Response {
+  return withSecurityHeaders(
+    new Response(html, {
+      headers: {
+        "Cache-Control": cacheControl,
+        "Content-Type": "text/html; charset=utf-8",
+      },
+    }),
+  );
+}
+
 function landingResponse(url: URL, env: WorkerEnv): Response {
   const html = renderLandingPage(
     url.searchParams.get("ref"),
     env.PLAY_STORE_URL,
   );
-  return withSecurityHeaders(
-    new Response(html, {
-      headers: {
-        "Cache-Control": "public, max-age=300, stale-while-revalidate=60",
-        "Content-Type": "text/html; charset=utf-8",
-      },
-    }),
-  );
+  return htmlResponse(html, htmlCacheControl);
 }
 
 export async function handleRequest(
@@ -210,6 +227,24 @@ export async function handleRequest(
   // of a JSON 404.
   if (url.pathname === "/" || url.pathname === "/import") {
     return landingResponse(url, env);
+  }
+
+  // `/privacy` is the canonical privacy URL; the trailing-slash form redirects
+  // permanently instead of serving a second copy of the same policy.
+  if (url.pathname === "/privacy") {
+    return htmlResponse(renderPrivacyPage(), htmlCacheControl);
+  }
+
+  if (url.pathname === "/privacy/") {
+    return withSecurityHeaders(
+      new Response(null, {
+        status: 308,
+        headers: {
+          "Cache-Control": "public, max-age=300",
+          Location: "/privacy",
+        },
+      }),
+    );
   }
 
   if (url.pathname === "/.well-known/assetlinks.json") {

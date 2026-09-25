@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
+    "serve": "bun run src/vps_server.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "bun test",
     "build": "wrangler deploy --dry-run"
