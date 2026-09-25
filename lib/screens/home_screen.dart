@@ -5,6 +5,7 @@ import '../services/database_service.dart';
 import '../services/app_mode_service.dart';
 import '../theme/app_theme.dart';
 import '../app_keys.dart';
+import '../services/app_language_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,21 +24,6 @@ class _HomeScreenState extends State<HomeScreen> {
   late int _month;
   int? _earliestYear;
   int? _earliestMonth;
-
-  static const _months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
 
   @override
   void initState() {
@@ -114,7 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, mode, _) {
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Collection Book'),
+            title: Text(context.tr('app_name')),
             actions: [
               // --- Mode toggle in AppBar ---
               _ModePill(mode: mode, onToggle: _modeService.toggle),
@@ -122,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
               IconButton(
                 key: AppKeys.homeSubscribers,
                 icon: Icon(PhosphorIcons.users(PhosphorIconsStyle.bold)),
-                tooltip: 'All Subscribers',
+                tooltip: context.tr('all_subscribers'),
                 onPressed: () => Navigator.pushNamed(
                   context,
                   '/subscribers',
@@ -131,7 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
               IconButton(
                 key: AppKeys.homeSettings,
                 icon: Icon(PhosphorIcons.gear(PhosphorIconsStyle.bold)),
-                tooltip: 'Settings',
+                tooltip: context.tr('settings'),
                 onPressed: () => Navigator.pushNamed(
                   context,
                   '/settings',
@@ -148,10 +134,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       _buildMonthSelector(),
                       _buildSummaryCards(currencyFormat),
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
                         child: Text(
-                          'Area-wise Collection',
+                          context.tr('area_collection'),
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
@@ -167,7 +153,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           padding: const EdgeInsets.all(32),
                           child: Center(
                             child: Text(
-                              'No ${mode.label} subscribers yet.\nAdd subscribers and assign them to areas.',
+                              context.tr('no_subscribers_yet', {
+                                'service': context.tr(
+                                  mode.key == 'tv' ? 'cable_tv' : 'internet',
+                                ),
+                              }),
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 color: Colors.grey,
@@ -187,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
               arguments: {'month': _month, 'year': _year},
             ).then((_) => _loadData()),
             icon: Icon(PhosphorIcons.currencyInr(PhosphorIconsStyle.bold)),
-            label: const Text('Record Payment'),
+            label: Text(context.tr('record_payment')),
           ),
         );
       },
@@ -226,7 +216,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                '${_months[_month - 1]} $_year',
+                '${context.monthName(_month, short: true)} $_year',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -285,9 +275,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _compactStatCard(
-                    label: 'Pending',
+                    label: context.tr('pending'),
                     value: fmt.format(pendingThisMonth),
-                    subtitle: '$unpaidCount unpaid',
+                    subtitle: context.tr('unpaid_count', {
+                      'count': unpaidCount,
+                    }),
                     subtitleIcon: PhosphorIcons.user(PhosphorIconsStyle.bold),
                     color: unpaidCount > 0 ? AppTheme.pending : AppTheme.paid,
                     icon: PhosphorIcons.clock(PhosphorIconsStyle.bold),
@@ -326,6 +318,7 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(
                 PhosphorIcons.receipt(PhosphorIconsStyle.bold),
@@ -333,18 +326,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: color,
               ),
               const SizedBox(width: 8),
-              Text(
-                'Outstanding Dues',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: color,
+              Expanded(
+                child: Text(
+                  context.tr('outstanding_dues'),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
                 ),
               ),
-              const Spacer(),
-              Text(
-                '$subscriberCount subscribers',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  context.tr('subscribers_count', {'count': subscriberCount}),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  textAlign: TextAlign.end,
+                ),
               ),
             ],
           ),
@@ -365,7 +363,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            hasDues ? 'total balance to collect' : 'All dues cleared!',
+            context.tr(hasDues ? 'balance_to_collect' : 'all_dues_cleared'),
             style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
           ),
         ],
@@ -406,7 +404,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(width: 6),
               Text(
-                'Collected',
+                context.tr('collected'),
                 style: TextStyle(
                   fontSize: 13,
                   color: Colors.grey.shade600,
@@ -442,7 +440,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            '${rate.toStringAsFixed(0)}% · $paidCount paid',
+            context.tr('paid_count_summary', {
+              'rate': rate.toStringAsFixed(0),
+              'count': paidCount,
+            }),
             style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
           ),
         ],
@@ -578,7 +579,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$subCount subscribers  ·  $paidCount paid',
+                      context.tr('area_subscribers_summary', {
+                        'subscribers': subCount,
+                        'paid': paidCount,
+                      }),
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.grey.shade600,
@@ -601,7 +605,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'of ${fmt.format(totalRent)}',
+                    context.tr('of_amount', {'amount': fmt.format(totalRent)}),
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
                 ],
@@ -643,7 +647,7 @@ class _ModePill extends StatelessWidget {
               Icon(mode.icon, size: 14, color: Colors.white),
               const SizedBox(width: 4),
               Text(
-                mode.shortLabel,
+                context.tr(mode.key == 'tv' ? 'tv' : 'fiber'),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,

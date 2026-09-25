@@ -3,10 +3,29 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'app_language_service.dart';
+
 enum ReceiptLanguage { english, hindi, marathi, bengali, tamil }
+
+extension AppLanguageReceipt on AppLanguageService {
+  ReceiptLanguage get receiptLanguage => switch (languageCode) {
+    'hi' => ReceiptLanguage.hindi,
+    'mr' => ReceiptLanguage.marathi,
+    'bn' => ReceiptLanguage.bengali,
+    'ta' => ReceiptLanguage.tamil,
+    _ => ReceiptLanguage.english,
+  };
+}
 
 extension ReceiptLanguageX on ReceiptLanguage {
   String get key => name;
+  String get localeCode => switch (this) {
+    ReceiptLanguage.english => 'en',
+    ReceiptLanguage.hindi => 'hi',
+    ReceiptLanguage.marathi => 'mr',
+    ReceiptLanguage.bengali => 'bn',
+    ReceiptLanguage.tamil => 'ta',
+  };
 
   String get label => switch (this) {
     ReceiptLanguage.english => 'English',

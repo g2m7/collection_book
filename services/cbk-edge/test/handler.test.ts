@@ -188,6 +188,58 @@ describe("cbk-edge routes", () => {
     },
   );
 
+  test("/import serves the same secure landing fallback as /", async () => {
+    const logs: unknown[][] = [];
+    console.log = (...values: unknown[]) => {
+      logs.push(values);
+    };
+
+    const [root, importRoute] = await Promise.all([
+      handleRequest(new Request("https://cbk.sarbaa.com/")),
+      handleRequest(new Request("https://cbk.sarbaa.com/import?source=reel")),
+    ]);
+    const html = await importRoute.text();
+
+    expect(importRoute.status).toBe(200);
+    expect(importRoute.headers.get("Content-Type")).toContain("text/html");
+    expect(importRoute.headers.get("Cache-Control")).toBe(
+      "public, max-age=300, stale-while-revalidate=60",
+    );
+    expect(importRoute.headers.get("Set-Cookie")).toBeNull();
+    expect(importRoute.headers.get("Location")).toBeNull();
+    expect(importRoute.headers.get("Content-Security-Policy")).toContain(
+      "default-src 'none'",
+    );
+    expect(importRoute.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(importRoute.headers.get("X-Frame-Options")).toBe("DENY");
+    expect(html).toBe(await root.text());
+    expect(html).toContain(
+      "https://play.google.com/store/apps/details?id=com.sarbaa.cbk",
+    );
+    expect(html).not.toContain("<script");
+    expect(logs).toHaveLength(0);
+  });
+
+  test("/import rejects unsupported methods and stays bounded to one path", async () => {
+    console.log = () => undefined;
+
+    for (const method of ["POST", "PUT", "DELETE", "HEAD"]) {
+      const response = await handleRequest(
+        new Request("https://cbk.sarbaa.com/import", { method }),
+      );
+      expect(response.status).toBe(405);
+      expect(response.headers.get("Allow")).toBe("GET");
+    }
+
+    for (const path of ["/import/", "/imports", "/import/extra"]) {
+      const response = await handleRequest(
+        new Request(`https://cbk.sarbaa.com${path}`),
+      );
+      expect(response.status).toBe(404);
+      expect(await response.text()).toBe('{"error":"not_found"}');
+    }
+  });
+
   test("unknown paths return bounded 404 responses", async () => {
     const response = await handleRequest(
       new Request("https://cbk.sarbaa.com/not-a-route"),

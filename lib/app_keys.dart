@@ -88,6 +88,7 @@ abstract final class AppKeys {
 
   static const settingsModeTv = Key('settings-mode-tv');
   static const settingsModeFiber = Key('settings-mode-fiber');
+  static const settingsAppLanguage = Key('settings-app-language');
   static const settingsReceiptLanguage = Key('settings-receipt-language');
   static const settingsBusinessName = Key('settings-business-name');
   static const settingsImportTv = Key('settings-import-tv');
@@ -105,6 +106,11 @@ abstract final class AppKeys {
       Key('settings-area-delete-$name');
   static const resetConfirm = Key('reset-confirm');
 
+  static const appLanguageEnglish = Key('app-language-english');
+  static const appLanguageHindi = Key('app-language-hindi');
+  static const appLanguageMarathi = Key('app-language-marathi');
+  static const appLanguageBengali = Key('app-language-bengali');
+  static const appLanguageTamil = Key('app-language-tamil');
   static const receiptLanguageEnglish = Key('receipt-language-english');
   static const receiptLanguageHindi = Key('receipt-language-hindi');
   static const receiptLanguageMarathi = Key('receipt-language-marathi');
@@ -121,6 +127,8 @@ abstract final class AppKeys {
   static const importPickFile = Key('import-pick-file');
   static const importBack = Key('import-back');
   static const importHistoryEmpty = Key('import-history-empty');
+  static const importHistoryBack = Key('import-history-back');
   static Key importHistoryRun(int runId) => Key('import-history-run-$runId');
+  static const importRunDetailBack = Key('import-run-detail-back');
   static const importErrorSearch = Key('import-error-search');
 }

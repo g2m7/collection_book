@@ -5,6 +5,7 @@ import '../models/import_result.dart';
 import '../services/import_service.dart';
 import '../services/app_mode_service.dart';
 import '../app_keys.dart';
+import '../services/app_language_service.dart';
 
 class ImportWizardScreen extends StatefulWidget {
   /// Optionally pre-select the service type ('tv' or 'fiber').
@@ -87,8 +88,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
           preview.subscriberCount == 0) {
         setState(() {
           _parsing = false;
-          _errorMessage =
-              'Unrecognized file format or no data found. Try a different file.';
+          _errorMessage = context.tr('unrecognized_file');
         });
         return;
       }
@@ -105,7 +105,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
       if (!mounted) return;
       setState(() {
         _parsing = false;
-        _errorMessage = 'Failed to read file: $e';
+        _errorMessage = context.tr('failed_read_file', {'error': e});
       });
     }
   }
@@ -131,7 +131,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
       if (!mounted) return;
       setState(() {
         _validating = false;
-        _errorMessage = 'Validation failed: $e';
+        _errorMessage = context.tr('validation_failed', {'error': e});
       });
     }
   }
@@ -177,7 +177,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
       if (!mounted) return;
       setState(() {
         _dryRunning = false;
-        _errorMessage = 'Dry run failed: $e';
+        _errorMessage = context.tr('dry_run_failed', {'error': e});
       });
     }
   }
@@ -197,8 +197,8 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                 size: 48,
                 color: const Color(0xFFF57C00),
               ),
-              title: const Text(
-                'Some Subscribers Have No ID',
+              title: Text(
+                context.tr('some_no_id'),
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
               content: Column(
@@ -220,7 +220,9 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            '$count subscriber${count == 1 ? '' : 's'} found without an ID number.',
+                            context.tr('subscribers_without_id', {
+                              'count': count,
+                            }),
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -233,14 +235,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Think of it like a name tag! 🏷️\n\n'
-                    'Each subscriber needs a unique number so the app can '
-                    'tell them apart — just like how every student gets a '
-                    'roll number in school.\n\n'
-                    'Your file is missing these numbers for some people. '
-                    'We can give them automatic numbers (like NET-001, '
-                    'NET-002…) so everything works smoothly.\n\n'
-                    'You can always update these later!',
+                    context.tr('auto_id_explanation'),
                     style: TextStyle(
                       fontSize: 13,
                       height: 1.5,
@@ -253,7 +248,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
                   child: Text(
-                    'Go Back',
+                    context.tr('back_action'),
                     style: TextStyle(color: Colors.grey.shade600),
                   ),
                 ),
@@ -263,7 +258,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                     PhosphorIcons.sparkle(PhosphorIconsStyle.bold),
                     size: 16,
                   ),
-                  label: const Text('Use Auto IDs'),
+                  label: Text(context.tr('use_auto_ids')),
                 ),
               ],
             );
@@ -310,7 +305,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
       if (!mounted) return;
       setState(() {
         _importing = false;
-        _errorMessage = 'Import failed: $e';
+        _errorMessage = context.tr('import_failed_error', {'error': e});
       });
     }
   }
@@ -322,11 +317,22 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: BackButton(key: AppKeys.importBack),
         title: Row(
           children: [
             Icon(mode.icon, size: 20),
             const SizedBox(width: 8),
-            Text('Import ${mode.label} Subscribers'),
+            Expanded(
+              child: Text(
+                context.tr('import_subscribers_title', {
+                  'service': context.tr(
+                    mode == ServiceMode.tv ? 'cable_tv' : 'internet',
+                  ),
+                }),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
       ),
@@ -342,7 +348,14 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
   }
 
   Widget _buildStepIndicator(Color primary) {
-    const labels = ['Service', 'File', 'Mapping', 'Preview', 'Import', 'Done'];
+    final labels = [
+      context.tr('step_service'),
+      context.tr('step_file'),
+      context.tr('step_mapping'),
+      context.tr('step_preview'),
+      context.tr('step_import'),
+      context.tr('done'),
+    ];
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -419,7 +432,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
   Widget _buildServiceStep() {
     final primary = Theme.of(context).colorScheme.primary;
 
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -430,34 +443,34 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
             color: primary,
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Import Subscribers',
+          Text(
+            context.tr('import_subscribers'),
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           Text(
-            'Select the service type for this import. Subscribers will be imported strictly into the selected service.',
+            context.tr('import_service_help'),
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 32),
           _serviceOption(
             ServiceMode.tv,
-            'Cable TV',
-            'Import TV subscribers with VC/STB numbers',
+            context.tr('cable_tv'),
+            context.tr('import_tv_option'),
             primary,
           ),
           const SizedBox(height: 12),
           _serviceOption(
             ServiceMode.fiber,
-            'Internet / Fiber',
-            'Import Internet subscribers with account IDs',
+            context.tr('internet'),
+            context.tr('import_internet_option'),
             primary,
           ),
           const SizedBox(height: 24),
           _buildStartMonthPicker(primary),
-          const Spacer(),
+          const SizedBox(height: 24),
           SizedBox(
             height: 52,
             child: FilledButton(
@@ -465,7 +478,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
               onPressed: (_startMonth != null && _startYear != null)
                   ? _nextStep
                   : null,
-              child: const Text('Continue'),
+              child: Text(context.tr('continue')),
             ),
           ),
         ],
@@ -541,20 +554,6 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
   }
 
   Widget _buildStartMonthPicker(Color primary) {
-    final monthNames = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
     final now = DateTime.now();
     // Allow current year and previous year
     final years = [now.year - 1, now.year];
@@ -579,7 +578,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Start Counting From',
+                context.tr('start_counting_from'),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -590,7 +589,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'You must select the month from which payment tracking begins.',
+            context.tr('start_counting_help'),
             style: TextStyle(
               fontSize: 12,
               color: hasSelection
@@ -617,7 +616,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                       value: _startMonth,
                       isExpanded: true,
                       hint: Text(
-                        'Select month…',
+                        context.tr('select_month'),
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey.shade400,
@@ -630,7 +629,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                       items: List.generate(12, (i) {
                         return DropdownMenuItem(
                           value: i + 1,
-                          child: Text(monthNames[i]),
+                          child: Text(context.monthName(i + 1)),
                         );
                       }),
                       onChanged: (v) {
@@ -656,7 +655,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                       value: _startYear,
                       isExpanded: true,
                       hint: Text(
-                        'Select year…',
+                        context.tr('select_year'),
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey.shade400,
@@ -690,24 +689,24 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Select File',
+          Text(
+            context.tr('select_file'),
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           Text(
-            'Choose an Excel (.xlsx, .xls) or CSV file to import.',
+            context.tr('select_file_help'),
             style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 32),
 
           if (_parsing)
-            const Center(
+            Center(
               child: Column(
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Reading file…'),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(context.tr('reading_file')),
                 ],
               ),
             )
@@ -737,7 +736,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Tap to Select File',
+                        context.tr('tap_select_file'),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -790,7 +789,10 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
           const Spacer(),
           Row(
             children: [
-              TextButton(onPressed: _prevStep, child: const Text('Back')),
+              TextButton(
+                onPressed: _prevStep,
+                child: Text(context.tr('back_action')),
+              ),
             ],
           ),
         ],
@@ -801,13 +803,13 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
   // ---- Step 2: Mapping Preview ----
   Widget _buildMappingStep() {
     if (_validating) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Validating mappings…'),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(context.tr('validating_mappings')),
           ],
         ),
       );
@@ -818,7 +820,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
     if (validation == null || preview == null) {
       return Center(
         child: Text(
-          _errorMessage ?? 'No data to validate.',
+          _errorMessage ?? context.tr('no_data_validate'),
           style: TextStyle(color: Colors.grey.shade600),
         ),
       );
@@ -829,20 +831,20 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Column Mapping',
+          Text(
+            context.tr('column_mapping'),
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          _infoRow('Format', preview.formatLabel),
-          _infoRow('Total Rows', '${validation.totalRows}'),
-          _infoRow('Valid Rows', '${validation.validRows}'),
+          _infoRow(context.tr('format'), _formatLabel(preview.format)),
+          _infoRow(context.tr('total_rows'), '${validation.totalRows}'),
+          _infoRow(context.tr('valid_rows'), '${validation.validRows}'),
           if (validation.errors.isNotEmpty)
-            _infoRow('Issues', '${validation.errors.length}'),
+            _infoRow(context.tr('issues'), '${validation.errors.length}'),
 
           const SizedBox(height: 16),
-          const Text(
-            'Field Mappings',
+          Text(
+            context.tr('field_mappings'),
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
@@ -850,8 +852,8 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
 
           if (validation.errors.isNotEmpty) ...[
             const SizedBox(height: 16),
-            const Text(
-              'Validation Issues',
+            Text(
+              context.tr('validation_issues'),
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
@@ -875,7 +877,11 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            'Row ${err.rowNumber}: ${err.reason}',
+                            context.tr('row_issue', {
+                              'row': err.rowNumber,
+                              'reason': AppLanguageService.instance
+                                  .importReason(err.reason),
+                            }),
                             style: const TextStyle(fontSize: 12),
                           ),
                         ),
@@ -887,7 +893,9 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
             ),
             if (validation.errors.length > 20)
               Text(
-                '…and ${validation.errors.length - 20} more issues',
+                context.tr('and_more_issues', {
+                  'count': validation.errors.length - 20,
+                }),
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
               ),
           ],
@@ -912,8 +920,9 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      '${validation.missingIdCount} subscriber${validation.missingIdCount == 1 ? '' : 's'} '
-                      'missing ID — auto IDs will be offered next.',
+                      context.tr('missing_ids_next', {
+                        'count': validation.missingIdCount,
+                      }),
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey.shade700,
@@ -928,18 +937,21 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
           const Spacer(),
           Row(
             children: [
-              TextButton(onPressed: _prevStep, child: const Text('Back')),
+              TextButton(
+                onPressed: _prevStep,
+                child: Text(context.tr('back_action')),
+              ),
               const Spacer(),
               FilledButton(
                 onPressed: validation.canProceed ? _runDryRun : null,
-                child: const Text('Analyze Import'),
+                child: Text(context.tr('analyze_import')),
               ),
             ],
           ),
           if (!validation.canProceed) ...[
             const SizedBox(height: 8),
             Text(
-              'Too many invalid rows. Fix the file and try again.',
+              context.tr('too_many_invalid'),
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.red.shade700,
@@ -983,7 +995,9 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    mapping.targetField,
+                    AppLanguageService.instance.importField(
+                      mapping.targetField,
+                    ),
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -992,7 +1006,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                   ),
                   if (mapping.sourceColumn != null)
                     Text(
-                      '← ${mapping.sourceColumn}',
+                      '← ${AppLanguageService.instance.importSourceColumn(mapping.sourceColumn!)}',
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.grey.shade500,
@@ -1018,13 +1032,13 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
   // ---- Step 3: Dry Run Results ----
   Widget _buildDryRunStep() {
     if (_dryRunning) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Analyzing import…'),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(context.tr('analyzing_import')),
           ],
         ),
       );
@@ -1032,7 +1046,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
 
     final result = _dryRunResult;
     if (result == null) {
-      return Center(child: Text(_errorMessage ?? 'No results.'));
+      return Center(child: Text(_errorMessage ?? context.tr('no_results')));
     }
 
     return Padding(
@@ -1040,38 +1054,38 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Import Preview',
+          Text(
+            context.tr('import_preview'),
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           Text(
-            'Review what will happen before importing.',
+            context.tr('review_import'),
             style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 24),
           _countCard(
-            'New Subscribers',
+            context.tr('new_subscribers'),
             result.insertCount,
             PhosphorIcons.userPlus(PhosphorIconsStyle.bold),
             const Color(0xFF2E7D32),
           ),
           _countCard(
-            'Updates',
+            context.tr('updates'),
             result.updateCount,
             PhosphorIcons.arrowsClockwise(PhosphorIconsStyle.bold),
             const Color(0xFF1565C0),
           ),
           if (result.rejectCount > 0)
             _countCard(
-              'Rejected',
+              context.tr('rejected'),
               result.rejectCount,
               PhosphorIcons.xCircle(PhosphorIconsStyle.bold),
               Colors.red.shade700,
             ),
           if (result.conflictCount > 0)
             _countCard(
-              'Conflicts',
+              context.tr('conflicts'),
               result.conflictCount,
               PhosphorIcons.warning(PhosphorIconsStyle.bold),
               Colors.orange.shade700,
@@ -1079,8 +1093,8 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
 
           if (result.errors.isNotEmpty) ...[
             const SizedBox(height: 16),
-            const Text(
-              'Issues Found',
+            Text(
+              context.tr('issues_found'),
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
@@ -1092,7 +1106,12 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Text(
-                      err.toString(),
+                      context.tr('row_issue', {
+                        'row': err.rowNumber,
+                        'reason': AppLanguageService.instance.importReason(
+                          err.reason,
+                        ),
+                      }),
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey.shade700,
@@ -1107,14 +1126,19 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
 
           Row(
             children: [
-              TextButton(onPressed: _prevStep, child: const Text('Back')),
+              TextButton(
+                onPressed: _prevStep,
+                child: Text(context.tr('back_action')),
+              ),
               const Spacer(),
               FilledButton(
                 onPressed: (result.insertCount + result.updateCount > 0)
                     ? _executeImport
                     : null,
                 child: Text(
-                  'Import ${result.insertCount + result.updateCount} Subscribers',
+                  context.tr('import_n_subscribers', {
+                    'count': result.insertCount + result.updateCount,
+                  }),
                 ),
               ),
             ],
@@ -1122,6 +1146,17 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
         ],
       ),
     );
+  }
+
+  String _formatLabel(ImportFormat format) {
+    final key = switch (format) {
+      ImportFormat.book1 => 'format_book1',
+      ImportFormat.activePackages => 'format_active_packages',
+      ImportFormat.totalList => 'format_total_list',
+      ImportFormat.csv => 'format_csv',
+      ImportFormat.unknown => 'format_unknown',
+    };
+    return context.tr(key);
   }
 
   Widget _countCard(String label, int count, IconData icon, Color color) {
@@ -1198,13 +1233,16 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'Importing…',
+            Text(
+              context.tr('importing'),
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text(
-              '$_importProgress of $_importTotal rows',
+              context.tr('rows_progress', {
+                'current': _importProgress,
+                'total': _importTotal,
+              }),
               style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
             ),
           ],
@@ -1235,7 +1273,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
       return Center(
         child: _errorMessage != null
             ? _errorBox(_errorMessage!)
-            : const Text('No results.'),
+            : Text(context.tr('no_results')),
       );
     }
 
@@ -1256,7 +1294,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            success ? 'Import Complete' : 'Import Failed',
+            context.tr(success ? 'import_complete' : 'import_failed'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 22,
@@ -1266,34 +1304,34 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
           ),
           const SizedBox(height: 24),
           _countCard(
-            'Added',
+            context.tr('added'),
             result.inserted,
             PhosphorIcons.userPlus(PhosphorIconsStyle.bold),
             const Color(0xFF2E7D32),
           ),
           _countCard(
-            'Updated',
+            context.tr('updated'),
             result.updated,
             PhosphorIcons.arrowsClockwise(PhosphorIconsStyle.bold),
             const Color(0xFF1565C0),
           ),
           if (result.payments > 0)
             _countCard(
-              'Payments',
+              context.tr('payments'),
               result.payments,
               PhosphorIcons.currencyInr(PhosphorIconsStyle.bold),
               Colors.purple,
             ),
           if (result.rejected > 0)
             _countCard(
-              'Rejected',
+              context.tr('rejected'),
               result.rejected,
               PhosphorIcons.xCircle(PhosphorIconsStyle.bold),
               Colors.red.shade700,
             ),
           if (result.conflicts > 0)
             _countCard(
-              'Conflicts',
+              context.tr('conflicts'),
               result.conflicts,
               PhosphorIcons.warning(PhosphorIconsStyle.bold),
               Colors.orange.shade700,
@@ -1302,7 +1340,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
           if (result.errors.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
-              '${result.errors.length} issue(s) logged to Import History.',
+              context.tr('issues_logged', {'count': result.errors.length}),
               style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
             ),
           ],
@@ -1312,7 +1350,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
             height: 52,
             child: FilledButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Done'),
+              child: Text(context.tr('done')),
             ),
           ),
         ],

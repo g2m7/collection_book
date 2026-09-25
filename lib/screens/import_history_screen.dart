@@ -5,6 +5,7 @@ import '../models/import_run.dart';
 import '../services/database_service.dart';
 import 'import_run_detail_screen.dart';
 import '../app_keys.dart';
+import '../services/app_language_service.dart';
 
 class ImportHistoryScreen extends StatefulWidget {
   const ImportHistoryScreen({super.key});
@@ -36,7 +37,13 @@ class _ImportHistoryScreenState extends State<ImportHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Import History')),
+      appBar: AppBar(
+        leading: BackButton(
+          key: AppKeys.importHistoryBack,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(context.tr('import_history')),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _runs.isEmpty
@@ -54,7 +61,7 @@ class _ImportHistoryScreenState extends State<ImportHistoryScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No imports yet',
+                    context.tr('no_imports_yet'),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
@@ -63,7 +70,7 @@ class _ImportHistoryScreenState extends State<ImportHistoryScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Import history will appear here.',
+                    context.tr('import_history_help'),
                     style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
                   ),
                 ],
@@ -100,7 +107,10 @@ class _ImportHistoryScreenState extends State<ImportHistoryScreen> {
     if (run.startedAt != null) {
       final dt = DateTime.tryParse(run.startedAt!);
       if (dt != null) {
-        timeLabel = DateFormat('dd MMM yyyy, hh:mm a').format(dt);
+        timeLabel = DateFormat(
+          'dd MMM yyyy, hh:mm a',
+          AppLanguageService.instance.languageCode,
+        ).format(dt);
       }
     }
 
@@ -140,7 +150,7 @@ class _ImportHistoryScreenState extends State<ImportHistoryScreen> {
                   Icon(statusIcon, size: 18, color: statusColor),
                   const SizedBox(width: 4),
                   Text(
-                    run.status.toUpperCase(),
+                    AppLanguageService.instance.importStatus(run.status),
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -153,21 +163,29 @@ class _ImportHistoryScreenState extends State<ImportHistoryScreen> {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  _miniStat('Added', run.insertCount, const Color(0xFF2E7D32)),
+                  _miniStat(
+                    context.tr('added'),
+                    run.insertCount,
+                    const Color(0xFF2E7D32),
+                  ),
                   const SizedBox(width: 12),
                   _miniStat(
-                    'Updated',
+                    context.tr('updated'),
                     run.updateCount,
                     const Color(0xFF1565C0),
                   ),
                   if (run.rejectCount > 0) ...[
                     const SizedBox(width: 12),
-                    _miniStat('Rejected', run.rejectCount, Colors.red.shade700),
+                    _miniStat(
+                      context.tr('rejected'),
+                      run.rejectCount,
+                      Colors.red.shade700,
+                    ),
                   ],
                   if (run.conflictCount > 0) ...[
                     const SizedBox(width: 12),
                     _miniStat(
-                      'Conflicts',
+                      context.tr('conflicts'),
                       run.conflictCount,
                       Colors.orange.shade700,
                     ),

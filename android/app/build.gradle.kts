@@ -64,9 +64,42 @@ android {
 
     buildTypes {
         release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                project.file("proguard-rules.pro"),
+            )
+
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
+        }
+    }
+}
+
+val verifyReleaseOptimization by tasks.registering {
+    group = "verification"
+    description = "Verifies that the release build uses R8 and the project ProGuard rules."
+
+    val releaseBuildType = android.buildTypes.getByName("release")
+    val customProguardFile = layout.projectDirectory.file("proguard-rules.pro")
+    val minifyEnabled = releaseBuildType.isMinifyEnabled
+    val shrinkResources = releaseBuildType.isShrinkResources
+    val proguardFiles = releaseBuildType.proguardFiles
+
+    doLast {
+        check(minifyEnabled) {
+            "Release builds must enable minification."
+        }
+        check(shrinkResources) {
+            "Release builds must enable resource shrinking."
+        }
+        check(customProguardFile.asFile.isFile) {
+            "Release builds require ${customProguardFile.asFile}."
+        }
+        check(customProguardFile.asFile in proguardFiles) {
+            "Release builds must attach ${customProguardFile.asFile} to their ProGuard configuration."
         }
     }
 }

@@ -101,6 +101,21 @@ function notFound(): Response {
   return jsonResponse({ error: "not_found" }, 404, "no-store");
 }
 
+function landingResponse(url: URL, env: WorkerEnv): Response {
+  const html = renderLandingPage(
+    url.searchParams.get("ref"),
+    env.PLAY_STORE_URL,
+  );
+  return withSecurityHeaders(
+    new Response(html, {
+      headers: {
+        "Cache-Control": "public, max-age=300, stale-while-revalidate=60",
+        "Content-Type": "text/html; charset=utf-8",
+      },
+    }),
+  );
+}
+
 export async function handleRequest(
   request: Request,
   env: WorkerEnv = {},
@@ -189,19 +204,12 @@ export async function handleRequest(
     );
   }
 
-  if (url.pathname === "/") {
-    const html = renderLandingPage(
-      url.searchParams.get("ref"),
-      env.PLAY_STORE_URL,
-    );
-    return withSecurityHeaders(
-      new Response(html, {
-        headers: {
-          "Cache-Control": "public, max-age=300, stale-while-revalidate=60",
-          "Content-Type": "text/html; charset=utf-8",
-        },
-      }),
-    );
+  // `/import` is the public App Link target. Until Digital Asset Links are
+  // verified, a dismissed chooser, an incomplete association, or any
+  // non-Android client must still reach a safe, cacheable Play handoff instead
+  // of a JSON 404.
+  if (url.pathname === "/" || url.pathname === "/import") {
+    return landingResponse(url, env);
   }
 
   if (url.pathname === "/.well-known/assetlinks.json") {

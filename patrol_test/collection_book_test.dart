@@ -6,6 +6,7 @@ import 'package:collection_book/models/payment.dart';
 import 'package:collection_book/main.dart';
 import 'package:collection_book/models/subscriber.dart';
 import 'package:collection_book/services/app_mode_service.dart';
+import 'package:collection_book/services/app_language_service.dart';
 import 'package:collection_book/services/backup_service.dart';
 import 'package:collection_book/services/database_service.dart';
 import 'package:collection_book/services/receipt_settings_service.dart';
@@ -18,6 +19,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app_patrol.dart';
 
 void main() {
+  setUp(() {
+    AppLanguageService.instance.resetToDefaults();
+    AppModeService().resetToDefaults();
+    ReceiptSettingsService().resetToDefaults();
+  });
+
   patrolTest(
     'dashboard KPIs, month boundaries, and area deep link are data-driven',
     ($) async {
@@ -143,12 +150,19 @@ void main() {
 
     await $(AppKeys.subscriberDetailEdit).tap();
     await $.pumpAndSettle();
+    await $(AppKeys.subscriberName).scrollTo();
     await $(AppKeys.subscriberName).enterText('Asha Kumar');
+    await $(AppKeys.subscriberAlias).scrollTo();
     await $(AppKeys.subscriberAlias).enterText('Kumar Home');
+    await $(AppKeys.subscriberIdentifier).scrollTo();
     await $(AppKeys.subscriberIdentifier).enterText('VC-2002');
+    await $(AppKeys.subscriberPhone).scrollTo();
     await $(AppKeys.subscriberPhone).enterText('9123456780');
+    await $(AppKeys.subscriberRent).scrollTo();
     await $(AppKeys.subscriberRent).enterText('800');
+    await $(AppKeys.subscriberPreviousDue).scrollTo();
     await $(AppKeys.subscriberPreviousDue).enterText('200');
+    await $(AppKeys.subscriberStartMonth).scrollTo();
     await $(AppKeys.subscriberStartMonth).tap();
     await $('February').tap();
     await $.pumpAndSettle();
@@ -248,14 +262,21 @@ void main() {
       expect($('₹75'), findsOneWidget);
       await $(AppKeys.subscriberDetailEdit).tap();
       await $.pumpAndSettle();
+      await $(AppKeys.subscriberName).scrollTo();
       await $(AppKeys.subscriberName).enterText('Fiber Updated');
+      await $(AppKeys.subscriberAlias).scrollTo();
       await $(AppKeys.subscriberAlias).enterText('Updated Home');
+      await $(AppKeys.subscriberIdentifier).scrollTo();
       await $(AppKeys.subscriberIdentifier).enterText('NET-3003');
+      await $(AppKeys.subscriberUsername).scrollTo();
       await $(AppKeys.subscriberUsername).enterText('updated-user');
+      await $(AppKeys.subscriberPhone).scrollTo();
       await $(AppKeys.subscriberPhone).enterText('9000000000');
+      await $(AppKeys.subscriberRent).scrollTo();
       await $(AppKeys.subscriberRent).enterText('950');
       await $(AppKeys.subscriberPreviousDue).scrollTo();
       await $(AppKeys.subscriberPreviousDue).enterText('25');
+      await $(AppKeys.subscriberStartMonth).scrollTo();
       await $(AppKeys.subscriberStartMonth).tap();
       await $('February').tap();
       await $.pumpAndSettle();
@@ -420,42 +441,42 @@ void main() {
         expect($('4 shown'), findsOneWidget);
         switch (key) {
           case AppKeys.subscriberSortNameDsc:
-            _expectVerticalOrder($, const [
+            await _expectVerticalOrder($, const [
               'Delta Inactive',
               'Bravo Subscriber',
               'Alpha Subscriber',
               'Charlie Advance',
             ]);
           case AppKeys.subscriberSortDueHigh:
-            _expectVerticalOrder($, const [
+            await _expectVerticalOrder($, const [
               'Delta Inactive',
               'Alpha Subscriber',
               'Bravo Subscriber',
               'Charlie Advance',
             ]);
           case AppKeys.subscriberSortDueLow:
-            _expectVerticalOrder($, const [
+            await _expectVerticalOrder($, const [
               'Charlie Advance',
               'Alpha Subscriber',
               'Bravo Subscriber',
               'Delta Inactive',
             ]);
           case AppKeys.subscriberSortRentHigh:
-            _expectVerticalOrder($, const [
+            await _expectVerticalOrder($, const [
               'Bravo Subscriber',
               'Charlie Advance',
               'Alpha Subscriber',
               'Delta Inactive',
             ]);
           case AppKeys.subscriberSortRentLow:
-            _expectVerticalOrder($, const [
+            await _expectVerticalOrder($, const [
               'Delta Inactive',
               'Alpha Subscriber',
               'Charlie Advance',
               'Bravo Subscriber',
             ]);
           case AppKeys.subscriberSortNameAsc:
-            _expectVerticalOrder($, const [
+            await _expectVerticalOrder($, const [
               'Alpha Subscriber',
               'Bravo Subscriber',
               'Delta Inactive',
@@ -562,6 +583,7 @@ void main() {
       expect($('Edit Payment'), findsOneWidget);
       await $(AppKeys.paymentAmount).enterText('100');
       await $(AppKeys.paymentAdjustment).enterText('-50');
+      await $(AppKeys.paymentNote).scrollTo();
       await $(AppKeys.paymentNote).enterText('Approved discount');
       await $.tester.drag(find.byType(ListView), const Offset(0, 1000));
       await $.pumpAndSettle();
@@ -603,11 +625,11 @@ void main() {
     await $.pumpAndSettle();
     expect($('Internet'), findsWidgets);
 
-    await $(AppKeys.settingsReceiptLanguage).tap();
+    await $(AppKeys.settingsAppLanguage).tap();
     await $.pumpAndSettle();
-    await $(AppKeys.receiptLanguageHindi).tap();
+    await $(AppKeys.appLanguageHindi).tap();
     await $.pumpAndSettle();
-    expect($('Hindi'), findsWidgets);
+    expect($('हिन्दी'), findsWidgets);
     await $(AppKeys.settingsBusinessName).tap();
     await $.pumpAndSettle();
     await $(AppKeys.receiptBusinessNameField).enterText('Patrol Cable');
@@ -651,16 +673,13 @@ void main() {
     );
     await $(AppKeys.settingsAreaDelete('North')).tap();
     await $.pumpAndSettle();
-    expect($('Delete Area?'), findsOneWidget);
-    expect(
-      $('Delete "North"? Subscribers in this area will need to be reassigned.'),
-      findsOneWidget,
-    );
-    await $('Cancel').tap();
+    expect($(_tr('delete_area')), findsOneWidget);
+    expect($(_tr('delete_area_message', {'name': 'North'})), findsOneWidget);
+    await $(_tr('cancel')).tap();
     await $.pumpAndSettle();
     await $(AppKeys.settingsAreaDelete('North')).tap();
     await $.pumpAndSettle();
-    await $('Delete').tap();
+    await $(_tr('delete')).tap();
     await $.pumpAndSettle();
     expect($(AppKeys.settingsAreaTile('North')), findsNothing);
     final unassigned = await db.getSubscriber(areaSubscriberId);
@@ -670,33 +689,42 @@ void main() {
     await $(AppKeys.settingsBackup).scrollTo();
     await $(AppKeys.settingsBackup).tap();
     await $.pumpAndSettle();
-    expect($('Backup created successfully'), findsOneWidget);
-    expect(find.textContaining('Last:'), findsOneWidget);
+    expect($(_tr('backup_created')), findsOneWidget);
+    expect(
+      find.textContaining(_tr('last_backup', {'date': ''})),
+      findsOneWidget,
+    );
     expect(await BackupService().listBackups(), hasLength(1));
 
     await $(AppKeys.settingsRestore).scrollTo();
     await $(AppKeys.settingsRestore).tap();
     await $.pumpAndSettle();
-    expect($('Restore from Backup?'), findsOneWidget);
-    await $('Cancel').tap();
+    expect($(_tr('restore_backup_title')), findsOneWidget);
+    await $(_tr('cancel')).tap();
     await $.pumpAndSettle();
 
     await $.pumpWidget(const SizedBox.shrink());
     await pumpCollectionBook($);
     await $(AppKeys.homeSettings).tap();
     await $.pumpAndSettle();
-    expect($('Hindi'), findsOneWidget);
+    expect($('हिन्दी'), findsWidgets);
     expect($('Patrol Cable'), findsOneWidget);
-    expect($('Internet'), findsWidgets);
+    expect($(_tr('internet')), findsWidgets);
 
     await $(AppKeys.settingsReset).scrollTo();
     await $(AppKeys.settingsReset).tap();
     await $.pumpAndSettle();
-    expect($('Reset App?'), findsOneWidget);
-    expect($('Wait 10…'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text(_tr('reset_app')),
+      ),
+      findsOneWidget,
+    );
+    expect($(_tr('wait_seconds', {'seconds': 10})), findsOneWidget);
     await $.tester.pump(const Duration(seconds: 11));
     await $.pumpAndSettle();
-    expect($('Reset Everything'), findsOneWidget);
+    expect($(_tr('reset_everything')), findsOneWidget);
     await $(AppKeys.resetConfirm).tap();
     await $.pumpAndSettle();
     expect(
@@ -715,6 +743,7 @@ void main() {
     expect($('TV'), findsOneWidget);
     expect(AppModeService().mode, ServiceMode.tv);
     expect(ReceiptSettingsService().language, ReceiptLanguage.english);
+    expect(AppLanguageService.instance.languageCode, 'en');
     expect(
       ReceiptSettingsService().businessNameNotifier.value,
       ReceiptSettingsService.defaultBusinessName,
@@ -790,10 +819,67 @@ void main() {
     },
   );
 
+  patrolTest('import history status stays localized in Hindi', ($) async {
+    await initializeCollectionBookForTest();
+    final db = DatabaseService();
+    final runId = await db.insertImportRun(
+      const ImportRun(
+        fileName: 'localized-status.csv',
+        serviceType: 'tv',
+        status: 'partial',
+        insertCount: 1,
+        rejectCount: 1,
+      ),
+    );
+    await db.insertImportErrors(runId, const [
+      ImportRowError(rowNumber: 2, reason: 'Missing strong identifier'),
+    ]);
+    await $.pumpWidgetAndSettle(const CollectionBookApp());
+
+    try {
+      await $(AppKeys.homeSettings).tap();
+      await $.pumpAndSettle();
+      await $(AppKeys.settingsAppLanguage).tap();
+      await $.pumpAndSettle();
+      await $(AppKeys.appLanguageHindi).tap();
+      await $.pumpAndSettle();
+
+      await $(AppKeys.settingsImportHistory).scrollTo();
+      await $(AppKeys.settingsImportHistory).tap();
+      await $.pumpAndSettle();
+      expect($('आयात इतिहास'), findsOneWidget);
+      expect($('आंशिक'), findsOneWidget);
+      expect($('PARTIAL'), findsNothing);
+      await $(AppKeys.importHistoryRun(runId)).tap();
+      await $.pumpAndSettle();
+      expect($('आयात विवरण'), findsOneWidget);
+      expect($('आंशिक'), findsOneWidget);
+      expect($('PARTIAL'), findsNothing);
+
+      await $(AppKeys.importRunDetailBack).tap();
+      await $.pumpAndSettle();
+      expect($('आयात इतिहास'), findsOneWidget);
+      await $(AppKeys.importHistoryBack).tap();
+      await $.pumpAndSettle();
+      expect($('सेटिंग्स'), findsOneWidget);
+      await $(AppKeys.settingsAppLanguage).scrollTo();
+      await $(AppKeys.settingsAppLanguage).tap();
+      await $.pumpAndSettle();
+      await $(AppKeys.appLanguageEnglish).tap();
+      await $.pumpAndSettle();
+      expect(AppLanguageService.instance.languageCode, 'en');
+    } finally {
+      await AppLanguageService.instance.setLocale(
+        AppLanguageService.englishLocale,
+      );
+    }
+  });
+
   patrolTest(
     'import setup, persisted history, severity details, and error search are covered',
     ($) async {
       await initializeCollectionBookForTest();
+      expect(AppLanguageService.instance.languageCode, 'en');
       final db = DatabaseService();
       final partialId = await db.insertImportRun(
         ImportRun(
@@ -845,9 +931,9 @@ void main() {
       await $.pumpAndSettle();
       expect($(AppKeys.importHistoryEmpty), findsNothing);
       expect($('patrol-partial.csv'), findsOneWidget);
-      expect($('PARTIAL'), findsOneWidget);
+      expect($('Partial'), findsOneWidget);
       expect($('patrol-success.csv'), findsOneWidget);
-      expect($('SUCCESS'), findsOneWidget);
+      expect($('Success'), findsOneWidget);
       expect($('Rejected'), findsOneWidget);
       expect($('Conflicts'), findsOneWidget);
       await $(AppKeys.importHistoryRun(partialId)).tap();
@@ -884,6 +970,7 @@ void main() {
       await $(AppKeys.importStartYear).tap();
       await $('${DateTime.now().year}').tap();
       await $.pumpAndSettle();
+      await $(AppKeys.importContinue).scrollTo();
       await $(AppKeys.importContinue).tap();
       await $.pumpAndSettle();
       expect($(AppKeys.importPickFile), findsOneWidget);
@@ -900,6 +987,7 @@ void main() {
       await $(AppKeys.importStartYear).tap();
       await $('${DateTime.now().year}').tap();
       await $.pumpAndSettle();
+      await $(AppKeys.importContinue).scrollTo();
       await $(AppKeys.importContinue).tap();
       await $.pumpAndSettle();
       expect($(AppKeys.importPickFile), findsOneWidget);
@@ -949,7 +1037,272 @@ void main() {
       expect(payment?.amountPaid, 400);
     },
   );
+
+  patrolTest(
+    'all five app languages render Settings, Import Wizard, Home, and Subscribers',
+    ($) async {
+      await initializeCollectionBookForTest();
+      expect(AppLanguageService.instance.languageCode, 'en');
+      await $.pumpWidgetAndSettle(const CollectionBookApp());
+
+      // Captured while the app is still English so every regional locale can be
+      // proven to translate these keys instead of silently returning English.
+      final englishCopy = <String, String>{
+        for (final key in _localizedProbeKeys) key: _tr(key),
+      };
+
+      try {
+        for (final language in _patrolAppLanguages) {
+          // Home -> Settings through the production control.
+          await $(AppKeys.homeSettings).tap();
+          await $.pumpAndSettle();
+          expect($(_tr('settings')), findsOneWidget);
+
+          // Production language selector dialog.
+          await _revealSetting($, AppKeys.settingsAppLanguage);
+          expect($(_tr('app_language')), findsOneWidget);
+          await $(AppKeys.settingsAppLanguage).tap();
+          await $.pumpAndSettle();
+          expect($(_tr('choose_language')), findsOneWidget);
+          await $(language.option).tap();
+          await $.pumpAndSettle();
+          // Material ignores a tap on the already-selected radio, so the
+          // selector only stays open when the language did not change. Close
+          // it with the platform Back so the cycle stays deterministic.
+          if (find.byKey(language.option).evaluate().isNotEmpty) {
+            await $.tester.pageBack();
+            await $.pumpAndSettle();
+          }
+          expect(find.byKey(AppKeys.appLanguageEnglish), findsNothing);
+
+          expect(AppLanguageService.instance.languageCode, language.code);
+          for (final probe in englishCopy.entries) {
+            if (language.code == 'en') {
+              expect(
+                _tr(probe.key),
+                probe.value,
+                reason:
+                    'English must keep its own catalog value for '
+                    '${probe.key}.',
+              );
+            } else {
+              expect(
+                _tr(probe.key),
+                isNot(probe.value),
+                reason:
+                    '${language.code} must translate ${probe.key} instead of '
+                    'silently falling back to the English value.',
+              );
+            }
+          }
+          expect($(_tr('settings')), findsOneWidget);
+          expect($(_tr('app_language')), findsOneWidget);
+          expect(
+            find.descendant(
+              of: find.byKey(AppKeys.settingsAppLanguage),
+              matching: find.text(
+                AppLanguageService.languageNames[language.code]!,
+              ),
+            ),
+            findsOneWidget,
+          );
+
+          // Lower, scrolling Settings surfaces. The Settings body is a lazily
+          // mounted `ListView`, so each lower tile is revealed before its own
+          // copy is asserted. Section headers sit just above their first tile
+          // and can stay unmounted, so only tile-owned copy is asserted.
+          await _revealSetting($, AppKeys.settingsReset);
+          expect(
+            find.descendant(
+              of: find.byKey(AppKeys.settingsReset),
+              matching: find.text(_tr('reset_app')),
+            ),
+            findsOneWidget,
+          );
+          expect(
+            find.descendant(
+              of: find.byKey(AppKeys.settingsReset),
+              matching: find.text(_tr('reset_app_description')),
+            ),
+            findsOneWidget,
+          );
+
+          await _revealSetting($, AppKeys.settingsImportHistory);
+          expect(
+            find.descendant(
+              of: find.byKey(AppKeys.settingsImportHistory),
+              matching: find.text(_tr('import_history')),
+            ),
+            findsOneWidget,
+          );
+          expect(
+            find.descendant(
+              of: find.byKey(AppKeys.settingsImportHistory),
+              matching: find.text(_tr('import_history_description')),
+            ),
+            findsOneWidget,
+          );
+
+          // TV import wizard opened from the production Settings tile.
+          await _revealSetting($, AppKeys.settingsImportTv);
+          expect(
+            find.descendant(
+              of: find.byKey(AppKeys.settingsImportTv),
+              matching: find.text(_tr('import_tv_subscribers')),
+            ),
+            findsOneWidget,
+          );
+          await $.pumpAndSettle();
+          _expectNoLayoutException($, language.code, 'Settings lower surfaces');
+          await $(AppKeys.settingsImportTv).tap();
+          await $.pumpAndSettle();
+          expect(
+            $(_tr('import_subscribers_title', {'service': _tr('cable_tv')})),
+            findsOneWidget,
+          );
+          expect($(_tr('import_subscribers')), findsOneWidget);
+          expect($(_tr('import_service_help')), findsOneWidget);
+          expect($(_tr('cable_tv')), findsOneWidget);
+          expect($(_tr('import_tv_option')), findsOneWidget);
+          expect($(_tr('step_service')), findsOneWidget);
+          expect($(_tr('step_file')), findsOneWidget);
+          expect($(AppKeys.importTv), findsOneWidget);
+          expect(
+            $.tester
+                .widget<FilledButton>(find.byKey(AppKeys.importContinue))
+                .onPressed,
+            isNull,
+          );
+          await $.pumpAndSettle();
+          _expectNoLayoutException($, language.code, 'TV Import Wizard');
+          await $(AppKeys.importBack).tap();
+          await $.pumpAndSettle();
+          expect($(_tr('settings')), findsOneWidget);
+
+          // Settings -> Home. The dues hero card header is asserted because it
+          // is the narrowest production surface and previously overflowed on
+          // long vernacular labels at this device width.
+          await $(find.byType(BackButton)).tap();
+          await $.pumpAndSettle();
+          expect($(_tr('app_name')), findsOneWidget);
+          expect($(_tr('record_payment')), findsOneWidget);
+          expect($(_tr('outstanding_dues')), findsOneWidget);
+          expect($(_tr('subscribers_count', {'count': 0})), findsOneWidget);
+          expect($(find.byTooltip(_tr('all_subscribers'))), findsOneWidget);
+          expect($(find.byTooltip(_tr('settings'))), findsOneWidget);
+          await $.pumpAndSettle();
+          _expectNoLayoutException($, language.code, 'Home');
+
+          // Home -> Subscribers -> Home.
+          await $(AppKeys.homeSubscribers).tap();
+          await $.pumpAndSettle();
+          expect($(_tr('subscribers')), findsOneWidget);
+          expect($(_tr('no_subscribers_match')), findsOneWidget);
+          await $.pumpAndSettle();
+          _expectNoLayoutException($, language.code, 'Subscriber List');
+          await $(find.byType(BackButton)).tap();
+          await $.pumpAndSettle();
+          expect($(_tr('app_name')), findsOneWidget);
+        }
+
+        // Leave the device on English through the production selector.
+        await $(AppKeys.homeSettings).tap();
+        await $.pumpAndSettle();
+        await _revealSetting($, AppKeys.settingsAppLanguage);
+        await $(AppKeys.settingsAppLanguage).tap();
+        await $.pumpAndSettle();
+        await $(AppKeys.appLanguageEnglish).tap();
+        await $.pumpAndSettle();
+        expect(AppLanguageService.instance.languageCode, 'en');
+        expect(find.byKey(AppKeys.appLanguageEnglish), findsNothing);
+        expect(
+          find.descendant(
+            of: find.byKey(AppKeys.settingsAppLanguage),
+            matching: find.text('English'),
+          ),
+          findsOneWidget,
+        );
+      } finally {
+        await AppLanguageService.instance.setLocale(
+          AppLanguageService.englishLocale,
+        );
+      }
+    },
+  );
 }
+
+/// Fails the journey when a settled localized surface left a pending Flutter or
+/// rendering exception behind, such as a `RenderFlex` overflow. Exactly one
+/// exception is taken per call and asserted, so a real overflow surfaces with
+/// its locale and surface instead of being drained and hidden.
+void _expectNoLayoutException(
+  PatrolIntegrationTester $,
+  String languageCode,
+  String surface,
+) {
+  expect(
+    $.tester.takeException(),
+    isNull,
+    reason:
+        'A Flutter or layout exception was raised while rendering $surface '
+        'in language $languageCode.',
+  );
+}
+
+/// Scrolls the lazily mounted Settings list down to [key] and aligns it fully
+/// in view. The Settings body is a `ListView`, so tiles far outside the
+/// viewport are not mounted and cannot be scrolled to directly; this walks the
+/// scroll position in half-viewport steps from the top instead.
+Future<void> _revealSetting(PatrolIntegrationTester $, Key key) async {
+  final listView = find.byType(ListView);
+  expect(listView, findsOneWidget);
+  final position = $.tester
+      .state<ScrollableState>(
+        find.descendant(of: listView, matching: find.byType(Scrollable)),
+      )
+      .position;
+  position.jumpTo(0);
+  await $.pumpAndSettle();
+
+  final finder = find.byKey(key);
+  while (finder.evaluate().isEmpty) {
+    final next = (position.pixels + position.viewportDimension * 0.5)
+        .clamp(0.0, position.maxScrollExtent)
+        .toDouble();
+    expect(
+      next,
+      greaterThan(position.pixels),
+      reason: 'Could not scroll the Settings list to $key.',
+    );
+    position.jumpTo(next);
+    await $.pumpAndSettle();
+  }
+  await $.tester.ensureVisible(finder);
+  await $.pumpAndSettle();
+}
+
+const List<String> _localizedProbeKeys = [
+  'app_name',
+  'subscribers',
+  'settings',
+  'outstanding_dues',
+];
+
+/// One production language-selector target for the five-language journey.
+class _PatrolAppLanguage {
+  const _PatrolAppLanguage({required this.code, required this.option});
+
+  final String code;
+  final Key option;
+}
+
+const List<_PatrolAppLanguage> _patrolAppLanguages = [
+  _PatrolAppLanguage(code: 'en', option: AppKeys.appLanguageEnglish),
+  _PatrolAppLanguage(code: 'hi', option: AppKeys.appLanguageHindi),
+  _PatrolAppLanguage(code: 'mr', option: AppKeys.appLanguageMarathi),
+  _PatrolAppLanguage(code: 'bn', option: AppKeys.appLanguageBengali),
+  _PatrolAppLanguage(code: 'ta', option: AppKeys.appLanguageTamil),
+];
 
 Future<_FilterSeedIds> _seedDashboardSubscribers(DatabaseService db) async {
   final now = DateTime.now();
@@ -1102,18 +1455,60 @@ Color _primaryColor(PatrolIntegrationTester tester) {
       .primary;
 }
 
-void _expectVerticalOrder(PatrolIntegrationTester tester, List<String> labels) {
-  final offsets = <Offset>[];
-  for (final label in labels) {
-    offsets.add(tester.tester.getTopLeft(find.text(label)));
-  }
-  for (var i = 1; i < offsets.length; i++) {
+Future<void> _expectVerticalOrder(
+  PatrolIntegrationTester tester,
+  List<String> labels,
+) async {
+  final listView = find.byType(ListView).last;
+  expect(listView, findsOneWidget);
+  final scrollableFinder = find.descendant(
+    of: listView,
+    matching: find.byType(Scrollable),
+  );
+  expect(scrollableFinder, findsOneWidget);
+  final scrollable = tester.tester.state<ScrollableState>(scrollableFinder);
+  final position = scrollable.position;
+  position.jumpTo(0);
+  await tester.pumpAndSettle();
+
+  final contentTops = <String, double>{};
+  while (contentTops.length < labels.length) {
+    final listTop = tester.tester.getTopLeft(listView).dy;
+    for (final label in labels) {
+      final labelFinder = find.text(label);
+      if (labelFinder.evaluate().isNotEmpty) {
+        final localTop =
+            tester.tester.getTopLeft(labelFinder.last).dy - listTop;
+        contentTops[label] = position.pixels + localTop;
+      }
+    }
+    if (contentTops.length == labels.length) break;
+
+    final nextOffset = (position.pixels + position.viewportDimension * 0.6)
+        .clamp(0.0, position.maxScrollExtent)
+        .toDouble();
     expect(
-      offsets[i].dy,
-      greaterThan(offsets[i - 1].dy),
+      nextOffset,
+      greaterThan(position.pixels),
+      reason:
+          'Could not build every expected row before reaching the list end: '
+          '${contentTops.keys.toList()}',
+    );
+    position.jumpTo(nextOffset);
+    await tester.pumpAndSettle();
+  }
+
+  for (var i = 1; i < labels.length; i++) {
+    expect(
+      contentTops[labels[i]]!,
+      greaterThan(contentTops[labels[i - 1]]!),
       reason: '${labels[i - 1]} should appear above ${labels[i]}',
     );
   }
+}
+
+String _tr(String key, [Map<String, Object?> args = const {}]) {
+  return AppLanguageService.instance.tr(key, args);
 }
 
 String _textFieldValue(PatrolIntegrationTester tester, Key key) {

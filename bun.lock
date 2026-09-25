@@ -14,6 +14,10 @@
       "name": "@collection-book/contracts",
       "version": "0.1.0",
     },
+    "packages/play-store-metadata": {
+      "name": "@collection-book/play-store-metadata",
+      "version": "0.1.0",
+    },
     "services/cbk-edge": {
       "name": "@collection-book/cbk-edge",
       "version": "0.1.0",
@@ -45,6 +49,8 @@
     "@collection-book/cbk-edge": ["@collection-book/cbk-edge@workspace:services/cbk-edge"],
 
     "@collection-book/contracts": ["@collection-book/contracts@workspace:packages/contracts"],
+
+    "@collection-book/play-store-metadata": ["@collection-book/play-store-metadata@workspace:packages/play-store-metadata"],
 
     "@cspotcode/source-map-support": ["@cspotcode/source-map-support@0.8.1", "", { "dependencies": { "@jridgewell/trace-mapping": "0.3.9" } }, "sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw=="],
 

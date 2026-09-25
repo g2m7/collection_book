@@ -9,6 +9,7 @@ import '../services/receipt_settings_service.dart';
 import '../services/whatsapp_receipt_service.dart';
 import '../services/analytics_service.dart';
 import '../app_keys.dart';
+import '../services/app_language_service.dart';
 
 class RecordPaymentScreen extends StatefulWidget {
   final int? subscriberId;
@@ -46,21 +47,6 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
   Payment? _existingPayment;
   double _dueBeforePayment = 0;
   Set<int> _paidSubscriberIds = {};
-
-  static const _monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
 
   @override
   void initState() {
@@ -159,22 +145,26 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Clear Due Helper',
+                Text(
+                  context.tr('clear_due_helper'),
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Current due: ₹${_dueBeforePayment.toStringAsFixed(0)}',
+                  context.tr('current_due', {
+                    'amount': _dueBeforePayment.toStringAsFixed(0),
+                  }),
                   style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                 ),
                 Text(
-                  'Adjustment: ₹${adj.toStringAsFixed(0)}',
+                  context.tr('adjustment', {'amount': adj.toStringAsFixed(0)}),
                   style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Suggested amount to make due 0: ₹${amount.toStringAsFixed(0)}',
+                  context.tr('suggested_clear_due', {
+                    'amount': amount.toStringAsFixed(0),
+                  }),
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -190,7 +180,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                       PhosphorIcons.checkCircle(PhosphorIconsStyle.bold),
                       size: 16,
                     ),
-                    label: const Text('Set This Amount'),
+                    label: Text(context.tr('set_this_amount')),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -203,7 +193,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                       PhosphorIcons.notePencil(PhosphorIconsStyle.bold),
                       size: 16,
                     ),
-                    label: const Text('Set Amount + Add Note'),
+                    label: Text(context.tr('set_amount_add_note')),
                   ),
                 ),
               ],
@@ -218,14 +208,16 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
     _setAmountToClearDue();
 
     if (action == 'apply_note' && _noteController.text.trim().isEmpty) {
-      _noteController.text = 'Auto-set amount to clear due';
+      _noteController.text = context.tr('auto_clear_due_note');
     }
 
     setState(() {});
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Amount set to ₹${amount.toStringAsFixed(0)} to clear due.',
+          context.tr('amount_set_to_clear', {
+            'amount': amount.toStringAsFixed(0),
+          }),
         ),
       ),
     );
@@ -242,7 +234,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
     final subscriber = _selectedSubscriber;
     if (subscriber == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a subscriber')),
+        SnackBar(content: Text(context.tr('subscriber_required'))),
       );
       return;
     }
@@ -270,7 +262,9 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
       if (!mounted) return;
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Payment could not be saved: $error')),
+        SnackBar(
+          content: Text(context.tr('payment_save_error', {'error': error})),
+        ),
       );
       return;
     }
@@ -279,7 +273,9 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
 
     if (!sendReceipt) {
       setState(() => _saving = false);
-      _showSavedAndClose('Payment recorded for ${subscriber.name}');
+      _showSavedAndClose(
+        context.tr('payment_recorded_for', {'name': subscriber.name}),
+      );
       return;
     }
 
@@ -288,11 +284,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
     );
     if (normalizedPhone == null) {
       setState(() => _saving = false);
-      _showSavedAndClose(
-        'Payment saved, but receipt was not sent. Add a valid WhatsApp phone '
-        'number to this subscriber, then use Send Receipt on the payment.',
-        isError: true,
-      );
+      _showSavedAndClose(context.tr('receipt_saved_not_sent'), isError: true);
       return;
     }
 
@@ -303,7 +295,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
         subscriber: subscriber,
         payment: payment,
         balanceAfterPayment: _projectedDueAfterSave(),
-        language: _receiptSettings.language,
+        language: AppLanguageService.instance.receiptLanguage,
         referralCode: referralCode,
       );
       final result = await _receiptService.launch(
@@ -315,15 +307,14 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
       setState(() => _saving = false);
       _showSavedAndClose(
         result.usedWebFallback
-            ? 'Payment saved. Review the receipt in your browser, then send it.'
-            : 'Payment saved. Review the receipt in WhatsApp, then tap Send.',
+            ? context.tr('receipt_review_web')
+            : context.tr('receipt_review_app'),
       );
     } catch (error) {
       if (!mounted) return;
       setState(() => _saving = false);
       _showSavedAndClose(
-        'Payment saved, but WhatsApp could not be opened: $error '
-        'The payment was not duplicated.',
+        context.tr('receipt_error_after_save', {'error': error}),
         isError: true,
       );
     }
@@ -355,7 +346,9 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _existingPayment != null ? 'Edit Payment' : 'Record Payment',
+          context.tr(
+            _existingPayment != null ? 'edit_payment' : 'record_payment',
+          ),
         ),
       ),
       body: _loading
@@ -367,7 +360,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                 children: [
                   // Subscriber selector
                   Text(
-                    'Subscriber',
+                    context.tr('subscriber'),
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -389,8 +382,8 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                       return DropdownButtonFormField<int>(
                         key: AppKeys.paymentSubscriber,
                         initialValue: _selectedSubscriber?.id,
-                        decoration: const InputDecoration(
-                          hintText: 'Select subscriber…',
+                        decoration: InputDecoration(
+                          hintText: context.tr('select_subscriber_hint'),
                         ),
                         isExpanded: true,
                         selectedItemBuilder: (context) {
@@ -437,7 +430,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                                 ),
                                 if (isPaid)
                                   Text(
-                                    'Paid',
+                                    context.tr('paid'),
                                     style: TextStyle(
                                       fontSize: 11,
                                       color: const Color(
@@ -468,7 +461,8 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                           });
                           _loadExistingPayment();
                         },
-                        validator: (v) => v == null ? 'Required' : null,
+                        validator: (v) =>
+                            v == null ? context.tr('required') : null,
                       );
                     },
                   ),
@@ -476,7 +470,10 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                   if (_selectedSubscriber != null) ...[
                     const SizedBox(height: 6),
                     Text(
-                      'Monthly Rent: ₹${_selectedSubscriber!.monthlyRent.toStringAsFixed(0)}',
+                      context.tr('monthly_rent_value', {
+                        'amount': _selectedSubscriber!.monthlyRent
+                            .toStringAsFixed(0),
+                      }),
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.grey.shade600,
@@ -484,7 +481,11 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Current due till ${_monthNames[_month - 1]} $_year: ₹${_dueBeforePayment.toStringAsFixed(0)}',
+                      context.tr('current_due_till', {
+                        'month': context.monthName(_month),
+                        'year': _year,
+                        'amount': _dueBeforePayment.toStringAsFixed(0),
+                      }),
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.grey.shade600,
@@ -496,7 +497,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
 
                   // Month / Year
                   Text(
-                    'Month & Year',
+                    context.tr('month_and_year'),
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -530,7 +531,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                         final m = firstMonth + i;
                         return DropdownMenuItem(
                           value: m,
-                          child: Text(_monthNames[m - 1]),
+                          child: Text(context.monthName(m)),
                         );
                       });
 
@@ -592,7 +593,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
 
                   // Amount
                   Text(
-                    'Amount Paid',
+                    context.tr('amount_paid'),
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -614,8 +615,12 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                       fontWeight: FontWeight.w700,
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty) return 'Enter amount';
-                      if (double.tryParse(v) == null) return 'Invalid amount';
+                      if (v == null || v.isEmpty) {
+                        return context.tr('enter_amount');
+                      }
+                      if (double.tryParse(v) == null) {
+                        return context.tr('invalid_amount');
+                      }
                       return null;
                     },
                     onChanged: (_) => setState(() {}),
@@ -632,7 +637,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                         PhosphorIcons.magicWand(PhosphorIconsStyle.bold),
                         size: 16,
                       ),
-                      label: const Text('Clear Due Helper'),
+                      label: Text(context.tr('clear_due_helper')),
                     ),
                   ),
 
@@ -640,7 +645,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
 
                   // Adjustment
                   Text(
-                    'Adjustments (optional)',
+                    context.tr('adjustments_optional'),
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -649,7 +654,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Use positive to add due (charge/previous due), negative to reduce due (discount).',
+                    context.tr('adjustments_help'),
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 6),
@@ -662,9 +667,9 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'^-?\d*')),
                     ],
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       prefixText: '₹ ',
-                      hintText: 'e.g. 1000 or -200',
+                      hintText: context.tr('adjustment_hint'),
                     ),
                     onChanged: (_) => setState(() {}),
                   ),
@@ -679,7 +684,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                       border: Border.all(color: Colors.grey.shade200),
                     ),
                     child: Text(
-                      'Examples: +1000 (carry forward old due), +250 (one-time charge), -200 (discount/waiver).',
+                      context.tr('adjustment_examples'),
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey.shade700,
@@ -698,11 +703,14 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                           : projected > 0
                           ? const Color(0xFFC62828)
                           : const Color(0xFF1565C0);
-                      final text = projected == 0
-                          ? 'After save: due becomes 0 (fully clear).'
-                          : isAdvance
-                          ? 'After save: advance will be ₹$amount.'
-                          : 'After save: remaining due will be ₹$amount.';
+                      final text = context.tr(
+                        projected == 0
+                            ? 'projection_clear'
+                            : isAdvance
+                            ? 'projection_advance'
+                            : 'projection_due',
+                        {'amount': amount},
+                      );
                       return Row(
                         children: [
                           Icon(
@@ -730,7 +738,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
 
                   // Note
                   Text(
-                    'Note (optional)',
+                    context.tr('note_optional'),
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -741,8 +749,8 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                   TextFormField(
                     key: AppKeys.paymentNote,
                     controller: _noteController,
-                    decoration: const InputDecoration(
-                      hintText: 'e.g., new connection charge…',
+                    decoration: InputDecoration(
+                      hintText: context.tr('note_hint'),
                     ),
                     maxLines: 2,
                   ),
@@ -766,7 +774,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('Save & Send Receipt'),
+                          : Text(context.tr('save_and_send_receipt')),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -775,7 +783,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                     child: OutlinedButton(
                       key: AppKeys.paymentSave,
                       onPressed: _saving ? null : _save,
-                      child: const Text('Save Only'),
+                      child: Text(context.tr('save_only')),
                     ),
                   ),
 
@@ -787,21 +795,24 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                         final confirmed = await showDialog<bool>(
                           context: context,
                           builder: (ctx) => AlertDialog(
-                            title: const Text('Delete Payment?'),
+                            title: Text(context.tr('delete_payment')),
                             content: Text(
-                              'This will permanently delete the payment for ${_monthNames[_month - 1]} $_year.',
+                              context.tr('delete_payment_message', {
+                                'month': context.monthName(_month),
+                                'year': _year,
+                              }),
                             ),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(ctx, false),
-                                child: const Text('Cancel'),
+                                child: Text(context.tr('cancel')),
                               ),
                               TextButton(
                                 onPressed: () => Navigator.pop(ctx, true),
                                 style: TextButton.styleFrom(
                                   foregroundColor: const Color(0xFFC62828),
                                 ),
-                                child: const Text('Delete'),
+                                child: Text(context.tr('delete')),
                               ),
                             ],
                           ),
@@ -810,7 +821,9 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                         await _db.deletePayment(_existingPayment!.id!);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Payment deleted')),
+                            SnackBar(
+                              content: Text(context.tr('payment_deleted')),
+                            ),
                           );
                           Navigator.pop(context);
                         }
@@ -819,7 +832,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                         PhosphorIcons.trash(PhosphorIconsStyle.bold),
                         size: 18,
                       ),
-                      label: const Text('Delete this payment'),
+                      label: Text(context.tr('delete_this_payment')),
                       style: TextButton.styleFrom(
                         foregroundColor: const Color(0xFFC62828),
                       ),

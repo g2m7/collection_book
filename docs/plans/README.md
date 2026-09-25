@@ -65,9 +65,11 @@ Brief summary of the feature, user problem solved, and expected business/technic
 
 ---
 
-## 🚀 Active Technical Plans: Go-To-Market (GTM) Engine
+## 📚 Plan Directory Index
 
-The following 8 technical implementation plans cover the GTM engineering foundation and the first public cbk.sarbaa.com edge vertical slice:
+This index lists all **10** plan directories in the repository, including the
+GTM implementation proposals, the cross-cutting Patrol verification plan, and
+the future GST workflow plan:
 
 | Plan Directory | Focus Area | Key Architectural Deliverables |
 | :--- | :--- | :--- |
@@ -76,7 +78,9 @@ The following 8 technical implementation plans cover the GTM engineering foundat
 | **[`gtm-freemium-paywall-licensing/`](gtm-freemium-paywall-licensing/plan.md)** | **Freemium Paywall & Licensing** | 100-subscriber freemium cap guard, MSO bulk import grace gate, vernacular upgrade bottom sheet, and Ed25519 offline-durable cryptographic license tokens. |
 | **[`gtm-upi-checkout-edge-pipeline/`](gtm-upi-checkout-edge-pipeline/plan.md)** | **1-Tap UPI Checkout & Edge Worker** | Cloudflare Edge Gateway (Bun runtime), Android UPI intent (PhonePe/GPay), Razorpay HMAC webhook verification, and Convex plan mutation. |
 | **[`gtm-vernacular-localization/`](gtm-vernacular-localization/plan.md)** | **Vernacular i18n Localization** | Five regional languages (Hindi, Marathi, Bengali, Tamil, English), reactive `AppLanguageService`, and grassroots jargon matrix (*bahi-khata, line boy, baqaya*). |
-| **[`gtm-android-release-aso-pipeline/`](gtm-android-release-aso-pipeline/plan.md)** | **Android Release & ASO Pipeline** | $<15\text{MB}$ AAB optimization (R8 shrinking, ProGuard), Android App Links (`assetlinks.json`), and regional Play Store metadata generator. |
+| **[`gtm-android-release-aso-pipeline/`](gtm-android-release-aso-pipeline/plan.md)** | **Android Release & ASO Pipeline** | $<15\text{MB}$ AAB optimization (R8 shrinking, ProGuard), locally implemented strict `/import` and `/r/{code}` App Link routing with Digital Asset Links still pending domain verification, and regional Play Store metadata generator. |
 | **[`gtm-outbound-scraping-campaign-cli/`](gtm-outbound-scraping-campaign-cli/plan.md)** | **Outbound Scraping CLI (Bun)** | Bun TypeScript CLI pipeline ingesting public TRAI/association directories, normalizing Indian mobiles (+91 E.164), MSO brand tagging, and staged WhatsApp outreach queues. |
-| **[`gtm-acquisition-telemetry-funnel/`](gtm-acquisition-telemetry-funnel/plan.md)** | **Acquisition & Funnel Telemetry** | Local SQLite event buffer (`analytics_events`), milestone funnel events, battery-friendly edge beacon flush, and zero-PII data privacy guards. |
+| **[`gtm-acquisition-telemetry-funnel/`](gtm-acquisition-telemetry-funnel/plan.md)** | **Acquisition & Funnel Telemetry** | Implemented local SQLite event buffer (`analytics_events`), milestone funnel events, battery-friendly edge beacon flush, Worker ingestion, and zero-PII guards; production deployment and device verification remain pending. |
+| **[`patrol-e2e/`](patrol-e2e/plan.md)** | **Patrol Android E2E Coverage** | Ten deterministic app journeys using production bootstrap, app widgets, SQLite, and shared preferences; compilation evidence is separated from pending current-source device execution and external-only native scenarios. |
+| **[`india-gst-billing-and-invoicing/`](india-gst-billing-and-invoicing/plan.md)** | **Future India GST Billing and Invoicing** | Future-only, offline-first GST/tax-invoice design for unregistered, regular, and composition modes, explicitly requiring Indian CA/legal review and implementing no GST capability today. |
 

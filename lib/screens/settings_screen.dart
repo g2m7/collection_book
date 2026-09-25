@@ -12,6 +12,7 @@ import '../services/receipt_settings_service.dart';
 import 'import_wizard_screen.dart';
 import 'import_history_screen.dart';
 import '../app_keys.dart';
+import '../services/app_language_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -66,13 +67,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final primary = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(context.tr('settings'))),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               children: [
                 // ---- Service Mode ----
-                _sectionHeader('Service Mode'),
+                _sectionHeader(context.tr('service_mode')),
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -90,7 +91,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ServiceMode.tv,
                           mode,
                           primary,
-                          'Cable TV subscribers & payments',
+                          context.tr('cable_tv_description'),
                         ),
                         Divider(
                           height: 1,
@@ -101,7 +102,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ServiceMode.fiber,
                           mode,
                           primary,
-                          'Internet / Fiber subscribers & payments',
+                          context.tr('internet_description'),
                         ),
                       ],
                     ),
@@ -110,7 +111,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
                   child: Text(
-                    'Switching mode shows only that service\'s data.',
+                    context.tr('service_mode_help'),
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
                 ),
@@ -118,36 +119,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1),
 
                 // ---- Receipts ----
-                _sectionHeader('WhatsApp Receipts'),
+                _sectionHeader(context.tr('whatsapp_receipts')),
                 _tile(
-                  key: AppKeys.settingsReceiptLanguage,
+                  key: AppKeys.settingsAppLanguage,
                   icon: PhosphorIcons.translate(PhosphorIconsStyle.bold),
-                  title: 'Receipt Language',
-                  subtitle: _receiptSettings.language.label,
-                  onTap: _chooseReceiptLanguage,
+                  title: context.tr('app_language'),
+                  subtitle: AppLanguageService
+                      .languageNames[AppLanguageService.instance.languageCode],
+                  onTap: _chooseAppLanguage,
                 ),
                 _tile(
                   key: AppKeys.settingsBusinessName,
                   icon: PhosphorIcons.buildings(PhosphorIconsStyle.bold),
-                  title: 'Business Name',
+                  title: context.tr('business_name'),
                   subtitle: _receiptSettings.businessNameNotifier.value,
                   onTap: _editBusinessName,
                 ),
                 _tile(
                   icon: PhosphorIcons.link(PhosphorIconsStyle.bold),
-                  title: 'Anonymous Referral Code',
+                  title: context.tr('anonymous_referral_code'),
                   subtitle: _referralCode,
                 ),
 
                 const Divider(height: 1),
 
                 // ---- Import Center ----
-                _sectionHeader('Import Center'),
+                _sectionHeader(context.tr('import_center')),
                 _tile(
                   key: AppKeys.settingsImportTv,
                   icon: PhosphorIcons.televisionSimple(PhosphorIconsStyle.bold),
-                  title: 'Import TV Subscribers',
-                  subtitle: 'Import from spreadsheet into Cable TV',
+                  title: context.tr('import_tv_subscribers'),
+                  subtitle: context.tr('import_tv_description'),
                   onTap: () => _openImportWizard('tv'),
                 ),
                 _tile(
@@ -155,8 +157,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: PhosphorIcons.globeHemisphereWest(
                     PhosphorIconsStyle.bold,
                   ),
-                  title: 'Import Internet Subscribers',
-                  subtitle: 'Import from spreadsheet into Internet/Fiber',
+                  title: context.tr('import_internet_subscribers'),
+                  subtitle: context.tr('import_internet_description'),
                   onTap: () => _openImportWizard('fiber'),
                 ),
                 _tile(
@@ -164,8 +166,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: PhosphorIcons.clockCounterClockwise(
                     PhosphorIconsStyle.bold,
                   ),
-                  title: 'Import History',
-                  subtitle: 'View past imports and error details',
+                  title: context.tr('import_history'),
+                  subtitle: context.tr('import_history_description'),
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -177,33 +179,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1),
 
                 // ---- Backup & Restore ----
-                _sectionHeader('Backup & Restore'),
+                _sectionHeader(context.tr('backup_restore')),
                 _tile(
                   key: AppKeys.settingsBackup,
                   icon: PhosphorIcons.archive(PhosphorIconsStyle.bold),
-                  title: 'Backup Now',
+                  title: context.tr('backup_now'),
                   subtitle: _lastBackup != null
-                      ? 'Last: ${DateFormat('dd MMM yyyy, hh:mm a').format(_lastBackup!)}'
-                      : 'No backups yet',
+                      ? context.tr('last_backup', {
+                          'date': DateFormat(
+                            'dd MMM yyyy, hh:mm a',
+                            AppLanguageService.instance.languageCode,
+                          ).format(_lastBackup!),
+                        })
+                      : context.tr('no_backups_yet'),
                   onTap: _doBackup,
                 ),
                 _tile(
                   key: AppKeys.settingsShareBackup,
                   icon: PhosphorIcons.shareNetwork(PhosphorIconsStyle.bold),
-                  title: 'Share Backup',
-                  subtitle: 'Share database file via any app',
+                  title: context.tr('share_backup'),
+                  subtitle: context.tr('share_backup_description'),
                   onTap: _shareBackup,
                 ),
                 _tile(
                   key: AppKeys.settingsRestore,
                   icon: PhosphorIcons.arrowsClockwise(PhosphorIconsStyle.bold),
-                  title: 'Restore from Backup',
-                  subtitle: 'Pick a backup file to restore',
+                  title: context.tr('restore_backup'),
+                  subtitle: context.tr('restore_backup_description'),
                   onTap: _doRestore,
                 ),
                 const Divider(height: 1),
 
-                _sectionHeader('Areas'),
+                _sectionHeader(context.tr('areas')),
                 ..._areas.map(
                   (a) => _tile(
                     key: AppKeys.settingsAreaTile(a.name),
@@ -229,7 +236,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     key: AppKeys.settingsAddArea,
                     onPressed: _addArea,
                     icon: Icon(PhosphorIcons.plus(PhosphorIconsStyle.bold)),
-                    label: const Text('Add Area'),
+                    label: Text(context.tr('add_area')),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
@@ -237,20 +244,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
 
                 const Divider(height: 1),
-                _sectionHeader('About'),
+                _sectionHeader(context.tr('about')),
                 _tile(
                   icon: PhosphorIcons.info(PhosphorIconsStyle.bold),
-                  title: 'Collection Book',
-                  subtitle: 'Version 1.0.0',
+                  title: context.tr('app_name'),
+                  subtitle: context.tr('version', {'version': '1.0.0'}),
                 ),
 
                 const Divider(height: 1),
-                _sectionHeader('Danger Zone'),
+                _sectionHeader(context.tr('danger_zone')),
                 _tile(
                   key: AppKeys.settingsReset,
                   icon: PhosphorIcons.warning(PhosphorIconsStyle.bold),
-                  title: 'Reset App',
-                  subtitle: 'Delete all data and start fresh',
+                  title: context.tr('reset_app'),
+                  subtitle: context.tr('reset_app_description'),
                   onTap: _resetApp,
                   trailing: Icon(
                     PhosphorIcons.caretRight(PhosphorIconsStyle.bold),
@@ -263,32 +270,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _chooseReceiptLanguage() async {
-    final selected = await showDialog<ReceiptLanguage>(
+  Future<void> _chooseAppLanguage() async {
+    final languageService = AppLanguageService.instance;
+    final selected = await showDialog<Locale>(
       context: context,
       builder: (context) => SimpleDialog(
-        title: const Text('Receipt Language'),
+        title: Text(context.tr('choose_language')),
         children: [
-          RadioGroup<ReceiptLanguage>(
-            groupValue: _receiptSettings.language,
+          RadioGroup<Locale>(
+            groupValue: languageService.locale,
             onChanged: (value) => Navigator.pop(context, value),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: ReceiptLanguage.values
+              children: AppLanguageService.supportedLocales
                   .map(
-                    (language) => RadioListTile<ReceiptLanguage>(
-                      key: switch (language) {
-                        ReceiptLanguage.english =>
-                          AppKeys.receiptLanguageEnglish,
-                        ReceiptLanguage.hindi => AppKeys.receiptLanguageHindi,
-                        ReceiptLanguage.marathi =>
-                          AppKeys.receiptLanguageMarathi,
-                        ReceiptLanguage.bengali =>
-                          AppKeys.receiptLanguageBengali,
-                        ReceiptLanguage.tamil => AppKeys.receiptLanguageTamil,
+                    (locale) => RadioListTile<Locale>(
+                      key: switch (locale.languageCode) {
+                        'en' => AppKeys.appLanguageEnglish,
+                        'hi' => AppKeys.appLanguageHindi,
+                        'mr' => AppKeys.appLanguageMarathi,
+                        'bn' => AppKeys.appLanguageBengali,
+                        _ => AppKeys.appLanguageTamil,
                       },
-                      value: language,
-                      title: Text(language.label),
+                      value: locale,
+                      title: Text(
+                        AppLanguageService.languageNames[locale.languageCode]!,
+                      ),
                     ),
                   )
                   .toList(),
@@ -298,7 +305,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (selected == null) return;
-    await _receiptSettings.setLanguage(selected);
+    await languageService.setLocale(selected);
     if (mounted) setState(() {});
   }
 
@@ -308,14 +315,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Business Name'),
+        title: Text(context.tr('business_name')),
         content: TextFormField(
           key: AppKeys.receiptBusinessNameField,
           initialValue: initialName,
           autofocus: true,
           textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            hintText: 'Shown on customer receipts',
+          decoration: InputDecoration(
+            hintText: context.tr('business_name_hint'),
           ),
           onChanged: (value) => editedName = value,
           onFieldSubmitted: (value) => Navigator.pop(context, value),
@@ -323,12 +330,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(context.tr('cancel')),
           ),
           FilledButton(
             key: AppKeys.receiptBusinessNameSave,
             onPressed: () => Navigator.pop(context, editedName),
-            child: const Text('Save'),
+            child: Text(context.tr('save')),
           ),
         ],
       ),
@@ -371,7 +378,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    option.label,
+                    context.tr(
+                      option == ServiceMode.tv ? 'cable_tv' : 'internet',
+                    ),
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -448,8 +457,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _backup.backup();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Backup created successfully'),
+          SnackBar(
+            content: Text(context.tr('backup_created')),
             backgroundColor: Color(0xFF2E7D32),
           ),
         );
@@ -459,7 +468,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Backup failed: $e'),
+            content: Text(context.tr('backup_failed', {'error': e})),
             backgroundColor: const Color(0xFFC62828),
           ),
         );
@@ -472,9 +481,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _backup.shareBackup();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Share failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.tr('share_failed', {'error': e}))),
+        );
       }
     }
   }
@@ -483,21 +492,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Restore from Backup?'),
-        content: const Text(
-          'This will replace all current data with the backup. This action cannot be undone.',
-        ),
+        title: Text(context.tr('restore_backup_title')),
+        content: Text(context.tr('restore_warning')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.tr('cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(
               foregroundColor: const Color(0xFFC62828),
             ),
-            child: const Text('Restore'),
+            child: Text(context.tr('restore')),
           ),
         ],
       ),
@@ -513,8 +520,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _backup.restoreFromFile(result.files.single.path!);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Restored successfully! Restarting…'),
+          SnackBar(
+            content: Text(context.tr('restored_successfully')),
             backgroundColor: Color(0xFF2E7D32),
           ),
         );
@@ -524,7 +531,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Restore failed: $e'),
+            content: Text(context.tr('restore_failed', {'error': e})),
             backgroundColor: const Color(0xFFC62828),
           ),
         );
@@ -537,11 +544,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add Area'),
+        title: Text(context.tr('add_area')),
         content: TextField(
           key: AppKeys.areaNameField,
           controller: controller,
-          decoration: const InputDecoration(hintText: 'Area name…'),
+          decoration: InputDecoration(hintText: context.tr('area_name_hint')),
           textCapitalization: TextCapitalization.words,
           autofocus: true,
           onSubmitted: (v) => Navigator.pop(context, v),
@@ -549,12 +556,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(context.tr('cancel')),
           ),
           TextButton(
             key: AppKeys.areaNameSave,
             onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Add'),
+            child: Text(context.tr('add')),
           ),
         ],
       ),
@@ -571,11 +578,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Rename Area'),
+        title: Text(context.tr('rename_area')),
         content: TextField(
           key: AppKeys.areaNameField,
           controller: controller,
-          decoration: const InputDecoration(hintText: 'Area name…'),
+          decoration: InputDecoration(hintText: context.tr('area_name_hint')),
           textCapitalization: TextCapitalization.words,
           autofocus: true,
           onSubmitted: (v) => Navigator.pop(context, v),
@@ -583,11 +590,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(context.tr('cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Save'),
+            child: Text(context.tr('save')),
           ),
         ],
       ),
@@ -603,21 +610,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Area?'),
-        content: Text(
-          'Delete "${area.name}"? Subscribers in this area will need to be reassigned.',
-        ),
+        title: Text(context.tr('delete_area')),
+        content: Text(context.tr('delete_area_message', {'name': area.name})),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.tr('cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(
               foregroundColor: const Color(0xFFC62828),
             ),
-            child: const Text('Delete'),
+            child: Text(context.tr('delete')),
           ),
         ],
       ),
@@ -642,8 +647,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _resetService.reset();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('All data cleared. App has been reset.'),
+          SnackBar(
+            content: Text(context.tr('all_data_cleared')),
             backgroundColor: Color(0xFF2E7D32),
           ),
         );
@@ -654,7 +659,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Reset failed: $e'),
+            content: Text(context.tr('reset_failed', {'error': e})),
             backgroundColor: const Color(0xFFC62828),
           ),
         );
@@ -704,9 +709,9 @@ class _ResetConfirmationDialogState extends State<_ResetConfirmationDialog> {
         size: 48,
         color: const Color(0xFFC62828),
       ),
-      title: const Text(
-        'Reset App?',
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+      title: Text(
+        context.tr('reset_app'),
+        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -725,9 +730,9 @@ class _ResetConfirmationDialogState extends State<_ResetConfirmationDialog> {
                   color: const Color(0xFFC62828),
                 ),
                 const SizedBox(width: 10),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'This will permanently delete ALL data.',
+                    context.tr('reset_warning_short'),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -740,9 +745,7 @@ class _ResetConfirmationDialogState extends State<_ResetConfirmationDialog> {
           ),
           const SizedBox(height: 16),
           Text(
-            'All subscribers, payments, areas, and import history '
-            'will be erased. This action cannot be undone.\n\n'
-            'Make sure you have a backup before proceeding.',
+            context.tr('reset_warning'),
             style: TextStyle(
               fontSize: 13,
               height: 1.5,
@@ -780,7 +783,7 @@ class _ResetConfirmationDialogState extends State<_ResetConfirmationDialog> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Please wait…',
+              context.tr('please_wait'),
               style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
             ),
           ],
@@ -789,7 +792,10 @@ class _ResetConfirmationDialogState extends State<_ResetConfirmationDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: Text('Cancel', style: TextStyle(color: Colors.grey.shade600)),
+          child: Text(
+            context.tr('cancel'),
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
         ),
         FilledButton(
           key: AppKeys.resetConfirm,
@@ -799,7 +805,9 @@ class _ResetConfirmationDialogState extends State<_ResetConfirmationDialog> {
             disabledBackgroundColor: Colors.grey.shade300,
           ),
           child: Text(
-            canConfirm ? 'Reset Everything' : 'Wait $_remainingSeconds…',
+            canConfirm
+                ? context.tr('reset_everything')
+                : context.tr('wait_seconds', {'seconds': _remainingSeconds}),
           ),
         ),
       ],

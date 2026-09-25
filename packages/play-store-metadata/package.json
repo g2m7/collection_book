@@ -1,0 +1,15 @@
+{
+  "name": "@collection-book/play-store-metadata",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "bun run src/cli.ts",
+    "check": "bun run src/cli.ts --check",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "bun test"
+  }
+}

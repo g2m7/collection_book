@@ -1,11 +1,24 @@
 import 'package:collection_book/models/payment.dart';
 import 'package:collection_book/models/subscriber.dart';
+import 'package:collection_book/services/app_language_service.dart';
 import 'package:collection_book/services/receipt_settings_service.dart';
 import 'package:collection_book/services/whatsapp_receipt_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    AppLanguageService.instance.resetInMemoryForTesting();
+    await AppLanguageService.instance.init();
+  });
+
+  tearDown(() {
+    AppLanguageService.instance.resetInMemoryForTesting();
+  });
+
   group('Indian phone normalization', () {
     test('normalizes supported Indian mobile formats', () {
       expect(
@@ -110,12 +123,12 @@ void main() {
   });
 
   group('Five-language receipt templates', () {
-    final expectations = <ReceiptLanguage, String>{
-      ReceiptLanguage.english: '*PAYMENT RECEIPT',
-      ReceiptLanguage.hindi: '*भुगतान रसीद',
-      ReceiptLanguage.marathi: '*पावती',
-      ReceiptLanguage.bengali: '*পেমেন্ট রসিদ',
-      ReceiptLanguage.tamil: '*ரசீது',
+    final expectations = <ReceiptLanguage, (String, String)>{
+      ReceiptLanguage.english: ('*PAYMENT RECEIPT', 'September 2026'),
+      ReceiptLanguage.hindi: ('*भुगतान रसीद', 'सितंबर 2026'),
+      ReceiptLanguage.marathi: ('*पावती', 'सप्टेंबर 2026'),
+      ReceiptLanguage.bengali: ('*পেমেন্ট রসিদ', 'সেপ্টেম্বর 2026'),
+      ReceiptLanguage.tamil: ('*ரசீது', 'செப்டம்பர் 2026'),
     };
 
     for (final entry in expectations.entries) {
@@ -142,11 +155,11 @@ void main() {
           referralCode: 'AB12CD',
         );
 
-        expect(text, contains(entry.value));
+        expect(text, contains(entry.value.$1));
         expect(text, contains('Ramesh Cable Network'));
         expect(text, contains('Sanjay Verma'));
         expect(text, contains('₹350'));
-        expect(text, contains('September 2026'));
+        expect(text, contains(entry.value.$2));
         expect(text, contains('https://cbk.sarbaa.com/r/AB12CD'));
         expect(text, isNot(contains('{{')));
       });

@@ -9,6 +9,7 @@ import '../services/app_mode_service.dart';
 import '../services/whatsapp_receipt_service.dart';
 import '../services/analytics_service.dart';
 import '../app_keys.dart';
+import '../services/app_language_service.dart';
 
 class AddSubscriberScreen extends StatefulWidget {
   final int? subscriberId;
@@ -127,7 +128,9 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
         if (mounted) {
           setState(() => _saving = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Subscriber could not be added')),
+            SnackBar(
+              content: Text(context.tr('subscriber_could_not_be_added')),
+            ),
           );
         }
         return;
@@ -139,7 +142,9 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_isEditing ? 'Subscriber updated' : 'Subscriber added'),
+          content: Text(
+            context.tr(_isEditing ? 'subscriber_updated' : 'subscriber_added'),
+          ),
           backgroundColor: const Color(0xFF2E7D32),
         ),
       );
@@ -164,7 +169,9 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Subscriber' : 'Add Subscriber'),
+        title: Text(
+          context.tr(_isEditing ? 'edit_subscriber' : 'add_subscriber'),
+        ),
       ),
       body: _loading
           ? const Center(child: CupertinoActivityIndicator(radius: 14))
@@ -174,38 +181,45 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.all(20),
                 children: [
-                  _label('Name *'),
+                  _label('${context.tr('name')} *'),
                   TextFormField(
                     key: AppKeys.subscriberName,
                     controller: _nameController,
-                    decoration: const InputDecoration(hintText: 'Full name…'),
+                    decoration: InputDecoration(
+                      hintText: context.tr('full_name_hint'),
+                    ),
                     textCapitalization: TextCapitalization.words,
                     validator: (v) => v == null || v.trim().isEmpty
-                        ? 'Name is required'
+                        ? context.tr('name_required')
                         : null,
                     autofocus: !_isEditing,
                   ),
 
                   const SizedBox(height: 16),
-                  _label('Alias Name'),
+                  _label(context.tr('alias_name')),
                   TextFormField(
                     key: AppKeys.subscriberAlias,
                     controller: _aliasController,
-                    decoration: const InputDecoration(
-                      hintText: 'Optional alias…',
+                    decoration: InputDecoration(
+                      hintText: context.tr('alias_name_hint'),
                     ),
                     textCapitalization: TextCapitalization.words,
                   ),
 
                   const SizedBox(height: 16),
-                  _label('Area'),
+                  _label(context.tr('area')),
                   DropdownButtonFormField<int>(
                     key: AppKeys.subscriberArea,
                     initialValue: _selectedAreaId,
-                    decoration: const InputDecoration(hintText: 'Select area…'),
+                    decoration: InputDecoration(
+                      hintText: context.tr('select_area_hint'),
+                    ),
                     isExpanded: true,
                     items: [
-                      const DropdownMenuItem(value: null, child: Text('None')),
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text(context.tr('none')),
+                      ),
                       ..._areas.map((a) {
                         return DropdownMenuItem(
                           value: a.id,
@@ -217,14 +231,14 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                   ),
 
                   const SizedBox(height: 16),
-                  _label(_isFiber ? 'Account ID' : 'VC Number'),
+                  _label(context.tr(_isFiber ? 'account_id' : 'vc_number')),
                   TextFormField(
                     key: AppKeys.subscriberIdentifier,
                     controller: _isFiber ? _accountIdController : _vcController,
                     decoration: InputDecoration(
-                      hintText: _isFiber
-                          ? 'Account or card number…'
-                          : 'VC / STB number…',
+                      hintText: context.tr(
+                        _isFiber ? 'account_id_hint' : 'vc_number_hint',
+                      ),
                     ),
                     keyboardType: TextInputType.text,
                     spellCheckConfiguration:
@@ -234,12 +248,12 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                   // Internet-specific identifier fields
                   if (_isFiber) ...[
                     const SizedBox(height: 16),
-                    _label('Username'),
+                    _label(context.tr('username')),
                     TextFormField(
                       key: AppKeys.subscriberUsername,
                       controller: _usernameController,
-                      decoration: const InputDecoration(
-                        hintText: 'Login username…',
+                      decoration: InputDecoration(
+                        hintText: context.tr('username_hint'),
                       ),
                       keyboardType: TextInputType.text,
                       autocorrect: false,
@@ -249,12 +263,12 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                   ],
 
                   const SizedBox(height: 16),
-                  _label('WhatsApp Phone'),
+                  _label(context.tr('whatsapp_phone')),
                   TextFormField(
                     key: AppKeys.subscriberPhone,
                     controller: _phoneController,
-                    decoration: const InputDecoration(
-                      hintText: 'Mobile number for receipts…',
+                    decoration: InputDecoration(
+                      hintText: context.tr('receipt_phone_hint'),
                     ),
                     keyboardType: TextInputType.phone,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -271,14 +285,14 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                         // valid Indian mobile numbers.
                         return null;
                       }
-                      return 'Enter a valid Indian mobile number';
+                      return context.tr('valid_indian_mobile');
                     },
                     spellCheckConfiguration:
                         const SpellCheckConfiguration.disabled(),
                   ),
 
                   const SizedBox(height: 16),
-                  _label('Monthly Rent *'),
+                  _label('${context.tr('monthly_rent')} *'),
                   TextFormField(
                     key: AppKeys.subscriberRent,
                     controller: _rentController,
@@ -289,63 +303,67 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                       hintText: '0',
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty) return 'Enter rent amount';
-                      if (double.tryParse(v) == null) return 'Invalid amount';
+                      if (v == null || v.isEmpty) {
+                        return context.tr('enter_rent_amount');
+                      }
+                      if (double.tryParse(v) == null) {
+                        return context.tr('invalid_amount');
+                      }
                       return null;
                     },
                   ),
 
                   const SizedBox(height: 16),
-                  _label('Subscription Start'),
+                  _label(context.tr('subscription_start')),
                   Text(
-                    'Dues are calculated from this month onward.',
+                    context.tr('dues_from_start_month'),
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 6),
                   Row(
                     children: [
                       Expanded(
-                        flex: 2,
+                        flex: 3,
                         child: DropdownButtonFormField<int>(
                           key: AppKeys.subscriberStartMonth,
                           initialValue: _startMonth,
-                          decoration: const InputDecoration(hintText: 'Month…'),
-                          items: List.generate(12, (i) {
-                            const names = [
-                              'January',
-                              'February',
-                              'March',
-                              'April',
-                              'May',
-                              'June',
-                              'July',
-                              'August',
-                              'September',
-                              'October',
-                              'November',
-                              'December',
-                            ];
-                            return DropdownMenuItem(
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            hintText: context.tr('month_hint'),
+                          ),
+                          items: List.generate(
+                            12,
+                            (i) => DropdownMenuItem(
                               value: i + 1,
-                              child: Text(names[i]),
-                            );
-                          }),
+                              child: Text(
+                                context.monthName(i + 1),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
                           onChanged: (v) => setState(() => _startMonth = v),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
+                        flex: 2,
                         child: DropdownButtonFormField<int>(
                           key: AppKeys.subscriberStartYear,
                           initialValue: _startYear,
-                          decoration: const InputDecoration(hintText: 'Year…'),
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            hintText: context.tr('year_hint'),
+                          ),
                           items: () {
                             final now = DateTime.now().year;
                             return List.generate(5, (i) {
                               final y = now - 3 + i;
                               return DropdownMenuItem(
                                 value: y,
-                                child: Text('$y'),
+                                child: Text(
+                                  '$y',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               );
                             });
                           }(),
@@ -356,7 +374,7 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                   ),
 
                   const SizedBox(height: 16),
-                  _label('Previous Due (carry forward)'),
+                  _label(context.tr('previous_due_carry_forward')),
                   TextFormField(
                     key: AppKeys.subscriberPreviousDue,
                     controller: _prevDueController,
@@ -373,7 +391,7 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                   ),
 
                   const SizedBox(height: 20),
-                  _label('Service'),
+                  _label(context.tr('service')),
                   _ServiceSelector(
                     value: _serviceType,
                     onChanged: (v) => setState(() => _serviceType = v),
@@ -386,10 +404,13 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Active', style: TextStyle(fontSize: 16)),
+                          Text(
+                            context.tr('active'),
+                            style: const TextStyle(fontSize: 16),
+                          ),
                           const SizedBox(height: 4),
                           Text(
-                            'Inactive subscribers are hidden',
+                            context.tr('inactive_subscribers_hidden'),
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.grey.shade600,
@@ -416,7 +437,11 @@ class _AddSubscriberScreenState extends State<AddSubscriberScreen> {
                           ? const CupertinoActivityIndicator(
                               color: Colors.white,
                             )
-                          : Text(_isEditing ? 'Update' : 'Add Subscriber'),
+                          : Text(
+                              context.tr(
+                                _isEditing ? 'update' : 'add_subscriber_action',
+                              ),
+                            ),
                     ),
                   ),
                 ],
@@ -457,7 +482,7 @@ class _ServiceSelector extends StatelessWidget {
           context,
           'tv',
           PhosphorIcons.televisionSimple(PhosphorIconsStyle.bold),
-          'Cable TV',
+          context.tr('cable_tv'),
           primary,
         ),
         const SizedBox(width: 8),
@@ -465,7 +490,7 @@ class _ServiceSelector extends StatelessWidget {
           context,
           'fiber',
           PhosphorIcons.globeHemisphereWest(PhosphorIconsStyle.bold),
-          'Internet',
+          context.tr('internet'),
           primary,
         ),
       ],

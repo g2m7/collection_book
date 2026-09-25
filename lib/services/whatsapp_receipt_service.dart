@@ -1,9 +1,11 @@
+import 'package:flutter/widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/payment.dart';
 import '../models/subscriber.dart';
 import 'receipt_settings_service.dart';
 import 'analytics_service.dart';
+import 'app_language_service.dart';
 
 enum ReceiptBalanceStatus { fullyPaid, advance, arrears }
 
@@ -171,13 +173,14 @@ class WhatsAppReceiptService {
           : organizationName.trim(),
       'CUST_NAME': subscriber.name,
       'VC_NUMBER': _subscriberIdentifier(subscriber),
-      'SERVICE': subscriber.serviceType == 'fiber'
-          ? 'Fiber Internet'
-          : 'Cable TV',
+      'SERVICE': AppLanguageService.instance.trFor(
+        Locale(language.localeCode),
+        subscriber.serviceType == 'fiber' ? 'internet' : 'cable_tv',
+      ),
       'AREA': subscriber.areaName?.trim().isNotEmpty == true
           ? subscriber.areaName!.trim()
           : 'N/A',
-      'MONTH': '${_monthName(payment.month)} ${payment.year}',
+      'MONTH': '${_monthName(language, payment.month)} ${payment.year}',
       'PAID_AMT': _formatCurrency(payment.amountPaid),
       'STATUS_LABEL': balance.label,
       'REMAINING_DUE': _formatCurrency(balance.remainingDue),
@@ -297,22 +300,17 @@ class WhatsAppReceiptService {
     };
   }
 
-  static String _monthName(int month) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    return month >= 1 && month <= 12 ? months[month - 1] : 'Unknown month';
+  static String _monthName(ReceiptLanguage language, int month) {
+    if (month < 1 || month > 12) {
+      return AppLanguageService.instance.trFor(
+        Locale(language.localeCode),
+        'unknown_month',
+      );
+    }
+    return AppLanguageService.instance.trFor(
+      Locale(language.localeCode),
+      'month_long_$month',
+    );
   }
 
   static String _template(ReceiptLanguage language) {
@@ -350,8 +348,8 @@ class WhatsAppReceiptService {
 ━━━━━━━━━━━━━━━━━━━━━
 🙏 समय पर भुगतान करने के लिए धन्यवाद!
 
-📱 Managed via Collection Book App
-👉 क्या आप केबल/WiFi ऑपरेटर हैं? 100 कनेक्शन तक फ्री ऐप डाउनलोड करें:
+📱 Collection Book ऐप से प्रबंधित
+👉 क्या आप केबल/WiFi ऑपरेटर हैं? 100 कनेक्शन तक मुफ़्त ऐप:
 {{REF_URL}}''',
       ReceiptLanguage.marathi =>
         '''
@@ -368,8 +366,8 @@ class WhatsAppReceiptService {
 ━━━━━━━━━━━━━━━━━━━━━
 🙏 वेळेवर बिल भरल्याबद्दल धन्यवाद!
 
-📱 Managed via Collection Book App
-👉 आपण केबल/इंटरनेट ऑपरेटर आहात का? १०० ग्राहकांसाठी मोफत अ‍ॅप:
+📱 Collection Book अ‍ॅपद्वारे व्यवस्थापित
+👉 आपण केबल/इंटरनेट ऑपरेटर आहात का? १०० ग्राहकांसाठी मोफत:
 {{REF_URL}}''',
       ReceiptLanguage.bengali =>
         '''
@@ -386,8 +384,8 @@ class WhatsAppReceiptService {
 ━━━━━━━━━━━━━━━━━━━━━
 🙏 সময়মতো বিল পরিশোধ করার জন্য ধন্যবাদ!
 
-📱 Managed via Collection Book App
-👉 আপনি কি কেবল বা ইন্টারনেট অপারেটর? ১০০ গ্রাহক পর্যন্ত ফ্রি অ্যাপ:
+📱 Collection Book অ্যাপ দিয়ে পরিচালিত
+👉 আপনি কি কেবল বা ইন্টারনেট অপারেটর? ১০০ গ্রাহক পর্যন্ত বিনামূল্যে:
 {{REF_URL}}''',
       ReceiptLanguage.tamil =>
         '''
@@ -404,7 +402,7 @@ class WhatsAppReceiptService {
 ━━━━━━━━━━━━━━━━━━━━━
 🙏 சரியான நேரத்தில் கட்டணம் செலுத்தியதற்கு நன்றி!
 
-📱 Managed via Collection Book App
+📱 Collection Book செயலியால் நிர்வகிக்கப்படுகிறது
 👉 நீங்கள் கேபிள்/வைஃபை ஆபரேட்டரா? 100 இணைப்புகள் இலவசம்:
 {{REF_URL}}''',
     };

@@ -1,6 +1,8 @@
 import 'package:collection_book/services/app_mode_service.dart';
+import 'package:collection_book/services/app_language_service.dart';
 import 'package:collection_book/services/app_reset_service.dart';
 import 'package:collection_book/services/receipt_settings_service.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -11,11 +13,13 @@ void main() {
     modeService = AppModeService();
     receiptSettings = ReceiptSettingsService();
     modeService.resetToDefaults();
+    AppLanguageService.instance.resetToDefaults();
     receiptSettings.resetToDefaults();
   });
 
   tearDown(() {
     modeService.resetToDefaults();
+    AppLanguageService.instance.resetToDefaults();
     receiptSettings.resetToDefaults();
   });
 
@@ -59,6 +63,7 @@ void main() {
     () async {
       final preferences = <String, Object?>{
         'service_mode': 'fiber',
+        'app_language': 'hi',
         'receipt_language': 'hindi',
         'receipt_business_name': 'Old Business',
         'receipt_referral_code': 'ABC234',
@@ -69,6 +74,7 @@ void main() {
         'strings': <String>['one', 'two'],
       };
       modeService.modeNotifier.value = ServiceMode.fiber;
+      AppLanguageService.instance.localeNotifier.value = const Locale('hi');
       receiptSettings.languageNotifier.value = ReceiptLanguage.hindi;
       receiptSettings.businessNameNotifier.value = 'Old Business';
       var databaseReset = false;
@@ -86,6 +92,7 @@ void main() {
       expect(databaseReset, isTrue);
       expect(preferences, isEmpty);
       expect(modeService.mode, ServiceMode.tv);
+      expect(AppLanguageService.instance.languageCode, 'en');
       expect(receiptSettings.language, ReceiptLanguage.english);
       expect(
         receiptSettings.businessNameNotifier.value,
@@ -100,9 +107,11 @@ void main() {
     () async {
       final preferences = <String, Object?>{
         'service_mode': 'fiber',
+        'app_language': 'hi',
         'receipt_language': 'hindi',
       };
       modeService.modeNotifier.value = ServiceMode.fiber;
+      AppLanguageService.instance.localeNotifier.value = const Locale('hi');
       receiptSettings.languageNotifier.value = ReceiptLanguage.hindi;
       final analyticsStates = <bool>[];
 
@@ -119,6 +128,7 @@ void main() {
       expect(preferences['service_mode'], 'fiber');
       expect(preferences['receipt_language'], 'hindi');
       expect(modeService.mode, ServiceMode.fiber);
+      expect(AppLanguageService.instance.languageCode, 'hi');
       expect(receiptSettings.language, ReceiptLanguage.hindi);
       expect(analyticsStates, [true, false]);
     },

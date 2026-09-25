@@ -8,6 +8,7 @@ import '../services/receipt_settings_service.dart';
 import '../services/whatsapp_receipt_service.dart';
 import '../theme/app_theme.dart';
 import '../app_keys.dart';
+import '../services/app_language_service.dart';
 
 class SubscriberDetailScreen extends StatefulWidget {
   final int subscriberId;
@@ -28,21 +29,6 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
   double _yearStartDue = 0;
   int? _sendingReceiptMonth;
   bool _sendingReceipt = false;
-
-  static const _monthShort = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
 
   final _currencyFormat = NumberFormat.currency(
     locale: 'en_IN',
@@ -81,7 +67,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
   Widget build(BuildContext context) {
     if (_loading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Subscriber')),
+        appBar: AppBar(title: Text(context.tr('subscriber'))),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -89,8 +75,8 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
     final sub = _subscriber;
     if (sub == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Subscriber')),
-        body: const Center(child: Text('Subscriber not found')),
+        appBar: AppBar(title: Text(context.tr('subscriber'))),
+        body: Center(child: Text(context.tr('subscriber_not_found'))),
       );
     }
 
@@ -101,7 +87,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
           IconButton(
             key: AppKeys.subscriberDetailEdit,
             icon: Icon(PhosphorIcons.pencilSimple(PhosphorIconsStyle.bold)),
-            tooltip: 'Edit',
+            tooltip: context.tr('edit'),
             onPressed: () => Navigator.pushNamed(
               context,
               '/add-subscriber',
@@ -111,7 +97,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
           IconButton(
             key: AppKeys.subscriberDetailDelete,
             icon: Icon(PhosphorIcons.trash(PhosphorIconsStyle.bold)),
-            tooltip: 'Delete',
+            tooltip: context.tr('delete'),
             onPressed: () => _confirmDelete(sub),
           ),
         ],
@@ -139,7 +125,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
           },
         ).then((_) => _loadData()),
         icon: Icon(PhosphorIcons.currencyInr(PhosphorIconsStyle.bold)),
-        label: const Text('Record Payment'),
+        label: Text(context.tr('record_payment')),
       ),
     );
   }
@@ -217,7 +203,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  sub.isActive ? 'Active' : 'Inactive',
+                  context.tr(sub.isActive ? 'active' : 'inactive'),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -230,13 +216,19 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
           const SizedBox(height: 16),
           const Divider(height: 1),
           const SizedBox(height: 16),
-          _infoRow('Area', sub.areaName ?? 'N/A'),
-          _infoRow('Monthly Rent', _currencyFormat.format(sub.monthlyRent)),
-          _infoRow('Previous Due', _currencyFormat.format(sub.previousDue)),
+          _infoRow(context.tr('area'), sub.areaName ?? 'N/A'),
+          _infoRow(
+            context.tr('monthly_rent'),
+            _currencyFormat.format(sub.monthlyRent),
+          ),
+          _infoRow(
+            context.tr('previous_due'),
+            _currencyFormat.format(sub.previousDue),
+          ),
           if (sub.vcNumber != null && sub.vcNumber!.isNotEmpty)
-            _infoRow('VC Number', sub.vcNumber!),
+            _infoRow(context.tr('vc_number'), sub.vcNumber!),
           if (sub.phone != null && sub.phone!.isNotEmpty)
-            _infoRow('WhatsApp Phone', sub.phone!),
+            _infoRow(context.tr('whatsapp_phone'), sub.phone!),
         ],
       ),
     );
@@ -247,14 +239,16 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          SizedBox(
-            width: 110,
+          Flexible(
+            flex: 4,
             child: Text(
               label,
               style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
             ),
           ),
+          const SizedBox(width: 8),
           Expanded(
+            flex: 6,
             child: Text(
               value,
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
@@ -294,7 +288,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              'Year $_year',
+              context.tr('year_value', {'year': _year}),
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -335,7 +329,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
     // If viewing a year before subscriber start, show nothing.
     if (effectiveStartYear != null && _year < effectiveStartYear) {
       final label = effectiveStartMonth != null
-          ? '${_monthShort[effectiveStartMonth - 1]} $effectiveStartYear'
+          ? '${context.monthName(effectiveStartMonth, short: true)} $effectiveStartYear'
           : '$effectiveStartYear';
       return Container(
         margin: const EdgeInsets.all(16),
@@ -346,7 +340,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
         ),
         child: Center(
           child: Text(
-            'Subscriber starts from $label',
+            context.tr('subscriber_starts_from', {'date': label}),
             style: TextStyle(color: Colors.grey.shade500),
           ),
         ),
@@ -378,32 +372,32 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
                 top: Radius.circular(12),
               ),
             ),
-            child: const Row(
+            child: Row(
               children: [
                 Expanded(
                   flex: 2,
                   child: Text(
-                    'Month',
+                    context.tr('month'),
                     style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                   ),
                 ),
                 Expanded(
                   child: Text(
-                    'Paid',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-                Expanded(
-                  child: Text(
-                    'Adj',
+                    context.tr('paid'),
                     style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                     textAlign: TextAlign.right,
                   ),
                 ),
                 Expanded(
                   child: Text(
-                    'Due',
+                    context.tr('adj'),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    context.tr('due'),
                     style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                     textAlign: TextAlign.right,
                   ),
@@ -468,7 +462,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
                               ),
                             ),
                           Text(
-                            _monthShort[month - 1],
+                            context.monthName(month, short: true),
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: isCurrentMonth
@@ -530,7 +524,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
                                 width: 40,
                                 height: 40,
                               ),
-                              tooltip: 'Send WhatsApp receipt',
+                              tooltip: context.tr('send_whatsapp_receipt'),
                               onPressed: _sendingReceipt
                                   ? null
                                   : () => _sendReceipt(payment, runningDue),
@@ -568,12 +562,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
     final phone = WhatsAppReceiptService.normalizeIndianPhone(subscriber.phone);
     if (phone == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Receipt not sent. Add a valid Indian WhatsApp phone number to '
-            'this subscriber.',
-          ),
-        ),
+        SnackBar(content: Text(context.tr('receipt_not_sent_phone'))),
       );
       return;
     }
@@ -589,7 +578,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
         subscriber: subscriber,
         payment: payment,
         balanceAfterPayment: balanceAfterPayment,
-        language: _receiptSettings.language,
+        language: AppLanguageService.instance.receiptLanguage,
         referralCode: referralCode,
       );
       final result = await _receiptService.launch(
@@ -602,8 +591,8 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
         SnackBar(
           content: Text(
             result.usedWebFallback
-                ? 'Review the receipt in your browser, then tap Send.'
-                : 'Review the receipt in WhatsApp, then tap Send.',
+                ? context.tr('receipt_review_browser')
+                : context.tr('receipt_review_whatsapp'),
           ),
         ),
       );
@@ -611,7 +600,7 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('WhatsApp could not be opened: $error'),
+          content: Text(context.tr('whatsapp_error', {'error': error})),
           backgroundColor: const Color(0xFFC62828),
         ),
       );
@@ -629,19 +618,19 @@ class _SubscriberDetailScreenState extends State<SubscriberDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Subscriber?'),
+        title: Text(context.tr('delete_subscriber')),
         content: Text(
-          'This will permanently delete ${sub.name} and all their payment history.',
+          context.tr('delete_subscriber_message', {'name': sub.name}),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.tr('cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: AppTheme.unpaid),
-            child: const Text('Delete'),
+            child: Text(context.tr('delete')),
           ),
         ],
       ),

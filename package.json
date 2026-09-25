@@ -14,7 +14,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "bun test",
     "build:worker": "WRANGLER_SEND_METRICS=false bun run --cwd services/cbk-edge build",
-    "verify:bun": "bun run format:check && bun run typecheck && bun test && bun run build:worker",
+    "aso:generate": "bun run packages/play-store-metadata/src/cli.ts",
+    "aso:check": "bun run packages/play-store-metadata/src/cli.ts --check",
+    "verify:bun": "bun run format:check && bun run typecheck && bun test && bun run aso:check && bun run build:worker",
     "verify:all": "bun run verify:bun && dart format --output=none --set-exit-if-changed lib test patrol_test && flutter analyze && flutter test && flutter build apk --debug && patrol build android --debug"
   },
   "devDependencies": {

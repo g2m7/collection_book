@@ -4,6 +4,7 @@ import '../models/import_run.dart';
 import '../models/import_result.dart';
 import '../services/database_service.dart';
 import '../app_keys.dart';
+import '../services/app_language_service.dart';
 
 class ImportRunDetailScreen extends StatefulWidget {
   final ImportRun run;
@@ -42,8 +43,14 @@ class _ImportRunDetailScreenState extends State<ImportRunDetailScreen> {
     if (_searchQuery.isEmpty) return _errors;
     final q = _searchQuery.toLowerCase();
     return _errors.where((e) {
-      return e.reason.toLowerCase().contains(q) ||
-          'row ${e.rowNumber}'.contains(q) ||
+      return AppLanguageService.instance
+              .importReason(e.reason)
+              .toLowerCase()
+              .contains(q) ||
+          context
+              .tr('row_number', {'row': e.rowNumber})
+              .toLowerCase()
+              .contains(q) ||
           (e.sourceColumn?.toLowerCase().contains(q) ?? false);
     }).toList();
   }
@@ -58,7 +65,13 @@ class _ImportRunDetailScreenState extends State<ImportRunDetailScreen> {
     };
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Import Details')),
+      appBar: AppBar(
+        leading: BackButton(
+          key: AppKeys.importRunDetailBack,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(context.tr('import_details')),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -92,7 +105,9 @@ class _ImportRunDetailScreenState extends State<ImportRunDetailScreen> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                run.status.toUpperCase(),
+                                AppLanguageService.instance.importStatus(
+                                  run.status,
+                                ),
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
@@ -104,17 +119,28 @@ class _ImportRunDetailScreenState extends State<ImportRunDetailScreen> {
                         ),
                         const SizedBox(height: 12),
                         _detailRow(
-                          'Service',
-                          run.serviceType == 'tv' ? 'Cable TV' : 'Internet',
+                          context.tr('service'),
+                          context.tr(
+                            run.serviceType == 'tv' ? 'cable_tv' : 'internet',
+                          ),
                         ),
-                        _detailRow('Added', '${run.insertCount}'),
-                        _detailRow('Updated', '${run.updateCount}'),
+                        _detailRow(context.tr('added'), '${run.insertCount}'),
+                        _detailRow(context.tr('updated'), '${run.updateCount}'),
                         if (run.rejectCount > 0)
-                          _detailRow('Rejected', '${run.rejectCount}'),
+                          _detailRow(
+                            context.tr('rejected'),
+                            '${run.rejectCount}',
+                          ),
                         if (run.conflictCount > 0)
-                          _detailRow('Conflicts', '${run.conflictCount}'),
+                          _detailRow(
+                            context.tr('conflicts'),
+                            '${run.conflictCount}',
+                          ),
                         if (run.paymentCount > 0)
-                          _detailRow('Payments', '${run.paymentCount}'),
+                          _detailRow(
+                            context.tr('payments'),
+                            '${run.paymentCount}',
+                          ),
                       ],
                     ),
                   ),
@@ -126,7 +152,7 @@ class _ImportRunDetailScreenState extends State<ImportRunDetailScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Text(
-                      'Error Rows (${_errors.length})',
+                      context.tr('error_rows', {'count': _errors.length}),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -138,7 +164,7 @@ class _ImportRunDetailScreenState extends State<ImportRunDetailScreen> {
                     key: AppKeys.importErrorSearch,
                     onChanged: (v) => setState(() => _searchQuery = v),
                     decoration: InputDecoration(
-                      hintText: 'Search errors…',
+                      hintText: context.tr('search_errors'),
                       prefixIcon: Icon(
                         PhosphorIcons.magnifyingGlass(PhosphorIconsStyle.bold),
                         size: 18,
@@ -156,7 +182,7 @@ class _ImportRunDetailScreenState extends State<ImportRunDetailScreen> {
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: Text(
-                        'No matching errors.',
+                        context.tr('no_matching_errors'),
                         style: TextStyle(color: Colors.grey.shade500),
                       ),
                     ),
@@ -165,7 +191,7 @@ class _ImportRunDetailScreenState extends State<ImportRunDetailScreen> {
                     padding: const EdgeInsets.all(32),
                     child: Center(
                       child: Text(
-                        'No errors recorded for this import.',
+                        context.tr('no_errors_recorded'),
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey.shade500,
@@ -208,7 +234,7 @@ class _ImportRunDetailScreenState extends State<ImportRunDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Row ${error.rowNumber}',
+                  context.tr('row_number', {'row': error.rowNumber}),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -225,7 +251,7 @@ class _ImportRunDetailScreenState extends State<ImportRunDetailScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                error.reason,
+                AppLanguageService.instance.importReason(error.reason),
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade800),
               ),
             ),
@@ -240,16 +266,20 @@ class _ImportRunDetailScreenState extends State<ImportRunDetailScreen> {
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          SizedBox(
-            width: 80,
+          Flexible(
+            flex: 4,
             child: Text(
               label,
               style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
             ),
           ),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 6,
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),

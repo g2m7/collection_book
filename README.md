@@ -12,6 +12,7 @@ Collection Book is an offline-first subscriber, payment, and collection ledger f
 | `docs/` | Strategy, technical documentation, and plans |
 | `docs/plans/<name>/plan.md` | One implementation or architecture plan per directory |
 | `packages/contracts/` | Shared TypeScript domain contracts and canonical constants |
+| `packages/play-store-metadata/` | Canonical five-language Play Store listing text and its Bun CLI |
 | `services/cbk-edge/` | Native Cloudflare Worker for `cbk.sarbaa.com` |
 | `packages/contracts/src/index.ts` | Referral validation and canonical public/package constants |
 
@@ -31,6 +32,10 @@ flutter doctor -v
 flutter run
 ```
 
+The app loads the English, Hindi, Marathi, Bengali, and Tamil JSON catalogs from
+`assets/i18n/`. The selected app language is persisted locally and also selects
+the generated WhatsApp receipt language.
+
 Useful checks:
 
 ```sh
@@ -49,10 +54,36 @@ bun install
 bun run format:check
 bun run typecheck
 bun test
+bun run aso:check
 bun run build:worker
 ```
 
 `bun run build:worker` invokes `wrangler deploy --dry-run` inside `services/cbk-edge`; it does not deploy the Worker or change DNS. Run `bun run verify:bun` for all TypeScript gates or `bun run verify:all` for the TypeScript and Flutter gates.
+
+## Play Store Listing Metadata
+
+`packages/play-store-metadata/src/metadata.ts` is the single source of truth for
+the `en-IN`, `hi-IN`, `mr-IN`, `bn-IN`, and `ta-IN` Google Play listings. The
+CLI validates every locale, field length, and claim before writing Play-ready
+files:
+
+```sh
+bun run aso:generate                          # writes packages/play-store-metadata/dist (git-ignored)
+bun run aso:generate --out build/play-store   # relative --out resolves from the repository root
+bun run aso:check                             # validates only, uses a temporary directory
+```
+
+Each locale directory receives `title.txt`, `short-description.txt`, and
+`full-description.txt`. Generation is deterministic, so re-running it produces
+byte-identical files. The CLI refuses a pre-existing symlinked locale directory
+or target file, and inventories the destination fail-closed: a stale locale
+directory, a stale or unknown file, or any stray entry makes the run fail with
+the offending paths listed, and nothing is deleted or overwritten. Remove such
+entries by hand, or point `--out` at an empty directory. `bun run aso:check`
+runs as part of `bun run verify:bun`, which CI executes as the independent Bun
+gate. Uploading the listings to Play Console, native-language editorial review
+of the vernacular copy, and packaging vernacular screenshots are still pending
+and tracked in `docs/plans/gtm-android-release-aso-pipeline/plan.md`.
 
 ## Local cbk.sarbaa.com Backend
 
@@ -84,12 +115,13 @@ Configuration:
 | --- | --- |
 | `GET /health` | Bounded service/status/version JSON; no secrets |
 | `GET /` | Self-contained mobile-first download landing page; valid `?ref=` codes are carried to the Play Store `referrer` parameter |
+| `GET /import` | Same cacheable, security-header-protected landing page as `GET /`; no referral cookie, redirect, or log |
 | `GET /r/:code` | Validates `[A-Z0-9]{6}`, emits a four-field privacy-safe log, sets a secure HttpOnly SameSite cookie, and redirects temporarily to `/?ref=CODE` |
 | `GET /.well-known/assetlinks.json` | Returns `[]` without a valid fingerprint, otherwise declares `com.sarbaa.cbk` |
 | Other `GET` paths | Bounded JSON 404 |
 | Unsupported methods | JSON 405 with `Allow: GET` |
 
-Referral click persistence, telemetry ingestion, payments, D1, Convex, and outbound tooling are intentionally not part of this slice.
+Referral click persistence, backend telemetry ingestion, payments, D1, Convex, and outbound tooling are intentionally not part of this Worker slice. The Flutter app's existing privacy-safe analytics service is separate.
 
 ## Release Signing and Asset Links
 

@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'analytics_service.dart';
 import 'app_mode_service.dart';
+import 'app_language_service.dart';
 import 'database_service.dart';
 import 'receipt_settings_service.dart';
 
@@ -111,6 +112,7 @@ class AppResetService {
       }
 
       _modeService.resetToDefaults();
+      AppLanguageService.instance.resetToDefaults();
       _receiptSettingsService.resetToDefaults();
     } finally {
       await _resumeAnalytics();

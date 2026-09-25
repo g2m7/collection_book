@@ -7,6 +7,7 @@ import '../services/database_service.dart';
 import '../services/app_mode_service.dart';
 import '../theme/app_theme.dart';
 import '../app_keys.dart';
+import '../services/app_language_service.dart';
 
 enum SortOption { nameAsc, nameDsc, dueHigh, dueLow, rentHigh, rentLow }
 
@@ -160,7 +161,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
         _sortOption == SortOption.nameAsc || _sortOption == SortOption.nameDsc;
     if (useGroups) {
       for (final s in _subscribers) {
-        final area = s.areaName ?? 'No Area';
+        final area = s.areaName ?? context.tr('no_area');
         grouped.putIfAbsent(area, () => []).add(s);
       }
     }
@@ -170,9 +171,14 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Subscribers'),
+            Text(context.tr('subscribers')),
             Text(
-              '${mode.label} · $_totalCount total',
+              context.tr('service_total', {
+                'service': context.tr(
+                  mode.key == 'tv' ? 'cable_tv' : 'internet',
+                ),
+                'count': _totalCount,
+              }),
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w400,
@@ -185,7 +191,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
           IconButton(
             key: AppKeys.subscriberListAdd,
             icon: Icon(PhosphorIcons.userPlus(PhosphorIconsStyle.bold)),
-            tooltip: 'Add Subscriber',
+            tooltip: context.tr('add_subscriber'),
             onPressed: () => Navigator.pushNamed(
               context,
               '/add-subscriber',
@@ -203,7 +209,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
               key: AppKeys.subscriberListSearch,
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Search by name, alias, or VC number…',
+                hintText: context.tr('search_by_name'),
                 prefixIcon: Icon(
                   PhosphorIcons.magnifyingGlass(PhosphorIconsStyle.bold),
                 ),
@@ -211,7 +217,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
                     ? IconButton(
                         key: AppKeys.subscriberListClearSearch,
                         icon: Icon(PhosphorIcons.x(PhosphorIconsStyle.bold)),
-                        tooltip: 'Clear Search',
+                        tooltip: context.tr('clear_search'),
                         onPressed: () {
                           _searchController.clear();
                           _loadData();
@@ -234,10 +240,10 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _paymentChip('All', 'all'),
-                        _paymentChip('Unpaid', 'unpaid'),
-                        _paymentChip('Paid', 'paid'),
-                        _paymentChip('Overpaid', 'overpaid'),
+                        _paymentChip(context.tr('all'), 'all'),
+                        _paymentChip(context.tr('unpaid'), 'unpaid'),
+                        _paymentChip(context.tr('paid'), 'paid'),
+                        _paymentChip(context.tr('overpaid'), 'overpaid'),
                         const SizedBox(width: 6),
                         Container(
                           width: 1,
@@ -245,8 +251,8 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
                           color: Colors.grey.shade300,
                         ),
                         const SizedBox(width: 6),
-                        _statusChip('Active', 'active'),
-                        _statusChip('Inactive', 'inactive'),
+                        _statusChip(context.tr('active'), 'active'),
+                        _statusChip(context.tr('inactive'), 'inactive'),
                       ],
                     ),
                   ),
@@ -304,7 +310,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    '${_subscribers.length} shown',
+                    context.tr('shown_count', {'count': _subscribers.length}),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -320,7 +326,9 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'Total Due: ${_currencyFormat.format(_totalDue)}',
+                      context.tr('total_due', {
+                        'amount': _currencyFormat.format(_totalDue),
+                      }),
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -349,7 +357,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'No subscribers match filters',
+                          context.tr('no_subscribers_match'),
                           style: TextStyle(
                             fontSize: 16,
                             color: Colors.grey.shade500,
@@ -369,7 +377,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
                               ),
                               size: 16,
                             ),
-                            label: const Text('Clear Filters'),
+                            label: Text(context.tr('clear_filters')),
                           ),
                         ],
                       ],
@@ -428,7 +436,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  'Area',
+                  context.tr('area'),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -442,7 +450,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
               spacing: 6,
               runSpacing: 4,
               children: [
-                _areaChip('All Areas', null),
+                _areaChip(context.tr('all_areas'), null),
                 ..._areas.map((a) => _areaChip(a.name, a.id)),
               ],
             ),
@@ -459,7 +467,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
               ),
               const SizedBox(width: 6),
               Text(
-                'Sort By',
+                context.tr('sort_by'),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -474,32 +482,32 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
             runSpacing: 4,
             children: [
               _sortChip(
-                'Name ↑',
+                context.tr('name_up'),
                 SortOption.nameAsc,
                 AppKeys.subscriberSortNameAsc,
               ),
               _sortChip(
-                'Name ↓',
+                context.tr('name_down'),
                 SortOption.nameDsc,
                 AppKeys.subscriberSortNameDsc,
               ),
               _sortChip(
-                'Due ↑',
+                context.tr('due_up'),
                 SortOption.dueHigh,
                 AppKeys.subscriberSortDueHigh,
               ),
               _sortChip(
-                'Due ↓',
+                context.tr('due_down'),
                 SortOption.dueLow,
                 AppKeys.subscriberSortDueLow,
               ),
               _sortChip(
-                'Rent ↑',
+                context.tr('rent_up'),
                 SortOption.rentHigh,
                 AppKeys.subscriberSortRentHigh,
               ),
               _sortChip(
-                'Rent ↓',
+                context.tr('rent_down'),
                 SortOption.rentLow,
                 AppKeys.subscriberSortRentLow,
               ),
@@ -519,7 +527,10 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
                   PhosphorIcons.arrowCounterClockwise(PhosphorIconsStyle.bold),
                   size: 14,
                 ),
-                label: const Text('Reset All', style: TextStyle(fontSize: 12)),
+                label: Text(
+                  context.tr('reset_all'),
+                  style: const TextStyle(fontSize: 12),
+                ),
                 style: TextButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                 ),
@@ -737,7 +748,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              'Inactive',
+                              context.tr('inactive'),
                               style: TextStyle(
                                 fontSize: 9,
                                 color: Colors.grey.shade600,
@@ -756,8 +767,8 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
                               color: Colors.purple.withAlpha(25),
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: const Text(
-                              'Both',
+                            child: Text(
+                              context.tr('both'),
                               style: TextStyle(
                                 fontSize: 10,
                                 color: Colors.purple,
@@ -781,7 +792,9 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
                     Row(
                       children: [
                         Text(
-                          'Rent: ${_currencyFormat.format(sub.monthlyRent)}',
+                          context.tr('rent_value', {
+                            'amount': _currencyFormat.format(sub.monthlyRent),
+                          }),
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade600,
@@ -798,7 +811,9 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
                             ),
                           ),
                           Text(
-                            'Prev: ${_currencyFormat.format(prevDue)}',
+                            context.tr('previous_value', {
+                              'amount': _currencyFormat.format(prevDue),
+                            }),
                             style: TextStyle(
                               fontSize: 12,
                               color: prevDue > 0
@@ -823,7 +838,7 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
                 children: [
                   Text(
                     due == 0
-                        ? 'Clear'
+                        ? context.tr('clear')
                         : due > 0
                         ? _currencyFormat.format(due)
                         : '+${_currencyFormat.format(-due)}',
@@ -836,9 +851,9 @@ class _SubscriberListScreenState extends State<SubscriberListScreen> {
                   ),
                   Text(
                     due > 0
-                        ? 'due'
+                        ? context.tr('due')
                         : due < 0
-                        ? 'advance'
+                        ? context.tr('advance')
                         : '',
                     style: TextStyle(fontSize: 11, color: color.withAlpha(180)),
                   ),
