@@ -1,5 +1,10 @@
 # Plan: Outbound Scraping & WhatsApp Campaign Pipeline (Bun CLI)
 
+> **Direction note.** Outbound campaigns and paid acquisition at scale wait until cloud
+> Stage 1 ships as the first post-launch update, so the number of legacy local ledgers
+> stays small. See
+> [`../play-launch-then-cloud-direction/plan.md`](../play-launch-then-cloud-direction/plan.md) §3.6 and §5.
+
 ## 1. Overview & Objective
 While paid Meta Ads create an inbound install engine, the fastest route to acquiring the first 500 paying operators is **direct outbound video demonstrations sent to verified LCO phone numbers**.
 

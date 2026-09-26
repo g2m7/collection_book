@@ -1,5 +1,11 @@
 # Plan: Android Release Packaging, App Links & ASO Pipeline
 
+> **Direction note.** This plan carries the Play launch, which is priority 2 in
+> [`../play-launch-then-cloud-direction/plan.md`](../play-launch-then-cloud-direction/plan.md),
+> after the pre-launch data-safety fixes. With Play App Signing, the asset-links
+> fingerprint must be the Play app-signing key SHA-256 from Play Console, not the upload
+> key (see that plan's §3.2).
+
 ## 1. Overview & Objective
 In Tier 2/3/4 India, mobile data bandwidth is precious and phone storage is constrained (predominantly 32GB–64GB budget Android devices). High APK download sizes (> 30MB) result in up to $40\%$ drop-off before app installation completes.
 

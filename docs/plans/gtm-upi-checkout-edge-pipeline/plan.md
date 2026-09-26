@@ -8,6 +8,10 @@
 > (Gate 1, vendor decision; Gate 13, commercial binding). Treat the Convex reference as
 > a placeholder to be re-decided, not a commitment. Nothing in this plan is implemented
 > and nothing below is marked complete.
+>
+> **Direction note.** This plan is **not part of the Google Play launch**; checkout
+> follows cloud Stage 8 (Gate 13). See
+> [`../play-launch-then-cloud-direction/plan.md`](../play-launch-then-cloud-direction/plan.md) §5.
 
 ## 1. Overview & Objective
 In the Indian mass market, credit cards and net banking account for $< 5\%$ of micro-business SaaS transactions. Local operators expect a **1-tap payment experience directly launching their installed UPI app (PhonePe, Google Pay, Paytm, BHIM)**.

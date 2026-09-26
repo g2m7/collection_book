@@ -33,6 +33,10 @@
 >   provisional assumption, it was never built, and **it is not a selection**. The backend
 >   vendor is an open decision gate that blocks provider-dependent work only. Do not read
 >   any Convex reference below as a commitment; **§6.3** records it as superseded history.
+> - **Overall direction (approved 2026-09-27):** launch the current local-only app on
+>   Google Play as a free app first, then build the cloud target, with cloud Stage 1 as
+>   the first post-launch update. The sequence, launch guardrails, and priority order are
+>   in [`docs/plans/play-launch-then-cloud-direction/plan.md`](docs/plans/play-launch-then-cloud-direction/plan.md).
 > - Customer-facing copy must never lead the implementation. Nothing in this document
 >   authorizes changing shipped landing, privacy, or Play Store metadata to imply a cloud
 >   product that does not exist.
@@ -550,6 +554,12 @@ machines behind a test double, or the cross-tenant test suites written against a
 contract. Client-side work already shipped or planned under the existing GTM plans
 (WhatsApp receipts, i18n, MSO import, clear-due helper, Play release) continues
 unchanged and is not gated by this roadmap.
+
+**Sequencing relative to the Play launch.** Per
+[`docs/plans/play-launch-then-cloud-direction/plan.md`](docs/plans/play-launch-then-cloud-direction/plan.md),
+the current local-only app launches on Google Play as a free app first. Stage 1 ships as
+the **first post-launch update**, and the Gate 1 vendor decision runs in parallel. Paid
+tiers in §7 depend on Stage 8 and are not offered at the Play launch.
 
 ---
 

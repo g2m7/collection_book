@@ -8,6 +8,11 @@ This directory contains all technical and feature implementation plans for **Col
 > the system of record and SQLite becomes a local cache plus mutation outbox. The target
 > is documented and **not implemented**; the backend vendor is an **open decision**.
 > See [`cloud-authoritative-offline-first-saas/`](cloud-authoritative-offline-first-saas/plan.md).
+>
+> **Overall direction.** Launch the current local-only app on Google Play first, then
+> build the cloud target, with its Stage 1 as the first post-launch update. The priority
+> order for all plans is in
+> [`play-launch-then-cloud-direction/`](play-launch-then-cloud-direction/plan.md).
 
 ---
 
@@ -74,13 +79,14 @@ Brief summary of the feature, user problem solved, and expected business/technic
 
 ## 📚 Plan Directory Index
 
-This index lists all **12** plan directories in the repository, including the approved
-target SaaS architecture plan, the GTM implementation proposals, the cross-cutting
+This index lists all **13** plan directories in the repository, including the overall
+project direction plan, the approved target SaaS architecture plan, the GTM implementation proposals, the cross-cutting
 Patrol verification plan, the future GST workflow plan, and the VPS landing/privacy
 launch plan:
 
 | Plan Directory | Focus Area | Key Architectural Deliverables |
 | :--- | :--- | :--- |
+| **[`play-launch-then-cloud-direction/`](play-launch-then-cloud-direction/plan.md)** | **Overall Project Direction (APPROVED)** | Two-track sequence: launch the current local-only app on Google Play as a free app first, then build the cloud target with Stage 1 as the first post-launch update and Gate 1 in parallel. Binding launch guardrails (signing-key custody, Play app-signing fingerprint for asset links, no permanent free/cap promises, no new migration blockers before Stage 1), required pre-launch data-safety fixes (safe restore, off-device backup reminder), and the priority order across all plans. Only the "direction recorded" item is checked. |
 | **[`cloud-authoritative-offline-first-saas/`](cloud-authoritative-offline-first-saas/plan.md)** | **Cloud-Authoritative, Offline-First Multi-Tenant SaaS (TARGET, not implemented)** | Approved target architecture: cloud ledger as system of record, SQLite as local cache plus durable mutation outbox, organizations and owner/manager/collector roles, server-side authorization and tenant isolation, globally stable ids, revisions and tombstones, idempotent sync with **permanent-rejection quarantine** and **blocking of reset/export/restore while unsynced**, **server-derived billing periods in the organization timezone (default `Asia/Kolkata`)**, append-only financial history with an immutable audit log, **local-cache security review** (keystore-backed tokens, cache-encryption threat model, app lock, secure export), migration blockers, staged rollout, DR, and explicit launch gates. **Every checklist item is unchecked; Stage 0 is the only complete stage; the backend vendor is an open decision that blocks provider-dependent work only, so Stage 1 local foundations may start before it closes.** It supersedes the Convex-specific target claims in `product.md` and `docs/05-product-architecture-and-roadmap.md`. |
 | **[`monorepo-cbk-edge/`](monorepo-cbk-edge/plan.md)** | **Monorepo & CBK Edge Vertical Slice** | Additive Bun workspaces, shared referral contracts, privacy-safe Cloudflare Worker landing/referral routes, Android asset links, and independent CI. |
 | **[`cbk-vps-landing-launch/`](cbk-vps-landing-launch/plan.md)** | **VPS Landing, Privacy & Launch** | Truthful no-JS landing page with honest Google Play availability states, `/privacy` policy, a Bun runtime adapter around `handleRequest`, versioned systemd/nginx deployment assets, and shared claim scanning for customer-facing copy. |

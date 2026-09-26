@@ -4,6 +4,11 @@
 this plan is in the shipped application. Every checklist item below is unchecked, and
 no vendor, provider, or backend has been selected.
 
+**Sequencing:** Per the overall direction in
+[`../play-launch-then-cloud-direction/plan.md`](../play-launch-then-cloud-direction/plan.md),
+the current local-only app launches on Google Play first, and Stage 1 of this plan ships
+as the first post-launch update. Gate 1 runs in parallel.
+
 **Supersedes the target-state claims in:** `product.md` §4/§6/§9 and
 `docs/05-product-architecture-and-roadmap.md` §3/§4, which described a
 `Convex` + Cloudflare cloud ledger as though it existed.
@@ -486,6 +491,11 @@ Rollout rules:
   authorizes direction, not the stage implementations.
 - Existing users on a local-only ledger keep a working local-only path until Stage 6
   exists; no forced migration without an explicit, tested import path.
+- **Stage 1 is pinned as the first update after the Google Play launch**
+  ([`../play-launch-then-cloud-direction/plan.md`](../play-launch-then-cloud-direction/plan.md)).
+  The Play installs created before it are the legacy ledgers Stage 1 must migrate
+  locally and Stage 6 must later claim, so Stage 6 must handle ledgers from both the
+  launched schema and the post-Stage-1 schema.
 - Rollback: every stage must have a documented way to return a device to a working
   local-only state without data loss.
 
@@ -594,6 +604,7 @@ Existing plans that this plan interacts with, and what they now depend on **from
 
 | Plan | Relationship |
 | :--- | :--- |
+| `docs/plans/play-launch-then-cloud-direction/` | Overall direction. Sets the Play launch of the local-only app ahead of this plan and pins Stage 1 as the first post-launch update. |
 | `docs/plans/gtm-freemium-paywall-licensing/` | Its offline Ed25519 license token and local 100-subscriber cap assume device-local authority. Entitlement enforcement must move to server-side plan state once Gate 13 closes. |
 | `docs/plans/gtm-upi-checkout-edge-pipeline/` | Its Convex plan mutation depends on Gate 1. The edge webhook seam is reusable; the ledger backend is not yet decided. |
 | `docs/plans/india-gst-billing-and-invoicing/` | Already records that money is `REAL`/`double` and that payment rows are editable. Both become launch-relevant under Gate 3 and Gate 5. |

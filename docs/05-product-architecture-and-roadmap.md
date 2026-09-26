@@ -4,7 +4,10 @@
 > product. Section 3 describes the **approved target architecture, which is not
 > implemented**. The staged plan, gates, and unchecked checklist live in
 > [`plans/cloud-authoritative-offline-first-saas/plan.md`](plans/cloud-authoritative-offline-first-saas/plan.md).
-> Product intent lives in [`../product.md`](../product.md).
+> Product intent lives in [`../product.md`](../product.md). The overall work order
+> (Play launch of the local-only app first, cloud Stage 1 as the first post-launch
+> update) is in
+> [`plans/play-launch-then-cloud-direction/plan.md`](plans/play-launch-then-cloud-direction/plan.md).
 
 ---
 
@@ -291,3 +294,8 @@ machines behind a test double, or the cross-tenant test suites written against a
 contract. Client-side work under the existing GTM plans (WhatsApp receipts, i18n, MSO
 import, clear-due helper, Play release) continues unchanged and is not gated by this
 roadmap.
+
+**Sequencing relative to the Play launch.** The current local-only app launches on
+Google Play first, Stage 1 ships as the first post-launch update, and Gate 1 runs in
+parallel. See
+[`plans/play-launch-then-cloud-direction/plan.md`](plans/play-launch-then-cloud-direction/plan.md).

@@ -16,6 +16,15 @@ Canonical repository contract for the Collection Book Flutter app and its additi
 
 The Flutter app stays at repository root. Do not move `lib/`, `test/`, `android/`, `ios/`, `assets/`, `pubspec.yaml`, or platform projects into a workspace package.
 
+## Project Direction
+
+The overall direction is `docs/plans/play-launch-then-cloud-direction/plan.md`. Read it before choosing what to work on.
+
+1. **Track A first:** launch the current local-only app on Google Play as a free app. Pre-launch data-safety fixes (safe restore, off-device backup reminder) come before publishing.
+2. **Track B next:** the cloud-authoritative SaaS in `docs/plans/cloud-authoritative-offline-first-saas/plan.md`. Its Stage 1 local data foundations ship as the first post-launch update; the Gate 1 vendor decision runs in parallel.
+3. **Follow the priority order** in that plan's §5. Paywall, UPI checkout, outbound tooling, GST, and a telemetry sink are not part of the Play launch.
+4. **Until Stage 1 ships,** do not add `REAL`/`double` money columns, new device-scoped autoincrement identities for syncable records, or new hard-delete paths for financial records.
+
 ## Non-Negotiable Tooling and Planning Rules
 
 1. **Bun only for TypeScript tooling:** use `bun` and `bunx`. Never use `npm`, `npx`, Yarn, or pnpm. Bun is pinned to 1.3.4 in the root manifest and CI.

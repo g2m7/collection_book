@@ -18,6 +18,9 @@ Collection Book is an offline-first subscriber, payment, and collection ledger f
   checklist live in
   [`docs/plans/cloud-authoritative-offline-first-saas/plan.md`](docs/plans/cloud-authoritative-offline-first-saas/plan.md).
   Product intent is in [`product.md`](product.md).
+- **Overall direction:** launch the current local-only app on Google Play as a free app
+  first, then build the cloud target, with its Stage 1 as the first post-launch update.
+  See [`docs/plans/play-launch-then-cloud-direction/plan.md`](docs/plans/play-launch-then-cloud-direction/plan.md).
 
 Customer-facing copy — the landing page, `/privacy`, and the Play Store listing — stays
 truthful to the **shipped** local-only app. It is not updated to imply the target exists,
@@ -230,8 +233,10 @@ Stage 1 is plain HTTP and is only a bring-up state: the `cbk_referral` cookie is
 
 Start with `AGENTS.md` for repository rules and `docs/INDEX.md` for the documentation map. Every plan belongs in its own `docs/plans/<name>/` directory with a `plan.md`; current external prerequisites must remain unchecked until completed.
 
-The approved product direction is the cloud-authoritative, offline-first, multi-tenant
-SaaS plan in `docs/plans/cloud-authoritative-offline-first-saas/plan.md`. It is
+The overall work order is `docs/plans/play-launch-then-cloud-direction/plan.md`: Play
+launch of the local-only app first, then the cloud target. The approved target
+architecture is the cloud-authoritative, offline-first, multi-tenant SaaS plan in
+`docs/plans/cloud-authoritative-offline-first-saas/plan.md`. It is
 documentation only: no backend vendor is selected, its Stage 1 vendor-neutral local
 foundations may start before that vendor decision closes, and no checklist item is
 complete.

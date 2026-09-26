@@ -10,6 +10,11 @@
 > (Gate 13). Nothing in this plan is implemented, nothing below is marked complete, and
 > this note does not change its scope. The offline behavior described here must keep
 > working after the pivot.
+>
+> **Direction note.** This plan is **not part of the Google Play launch**. The launch is
+> free, and paid plans arrive with cloud Stage 8 and server-side entitlements. Building
+> this device-local paywall earlier needs an explicit, separately approved decision. See
+> [`../play-launch-then-cloud-direction/plan.md`](../play-launch-then-cloud-direction/plan.md) §5.
 
 ## 1. Overview & Objective
 Collection Book's core business model is a high-velocity freemium hook:
