@@ -1,5 +1,16 @@
 # Plan: Freemium Paywall, Licensing & Tier Enforcement
 
+> **Supersession note (added by the cloud-authoritative SaaS pivot).** This plan assumes
+> **device-local authority**: the 100-subscriber cap, the MSO import grace gate, and the
+> Ed25519 license token are all enforced on the phone. In the approved target the cloud
+> ledger is the system of record, so **entitlement enforcement moves to server-side plan
+> state** and the offline token becomes a cached, expiring grant rather than the
+> authority. See
+> [`../cloud-authoritative-offline-first-saas/plan.md`](../cloud-authoritative-offline-first-saas/plan.md)
+> (Gate 13). Nothing in this plan is implemented, nothing below is marked complete, and
+> this note does not change its scope. The offline behavior described here must keep
+> working after the pivot.
+
 ## 1. Overview & Objective
 Collection Book's core business model is a high-velocity freemium hook:
 - **Free Tier**: ₹0 forever, up to 100 subscribers. Full offline SQLite functionality.

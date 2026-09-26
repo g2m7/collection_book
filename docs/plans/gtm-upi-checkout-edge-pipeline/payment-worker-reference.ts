@@ -1,9 +1,18 @@
 /**
  * Reference Cloudflare Edge Worker (Bun Runtime Standard)
  * Handles Razorpay Order Creation and Webhook Verification.
- * 
+ *
  * Execution:
  *   bun run payment-worker-reference.ts
+ *
+ * SUPERSESSION WARNING (added by the cloud-authoritative SaaS pivot):
+ *   This is a PROVISIONAL design reference, not deployed code. The edge gateway and
+ *   Razorpay HMAC webhook seam remain valid. The `CONVEX_URL` / `CONVEX_ADMIN_KEY`
+ *   bindings and every "Convex" name below are PLACEHOLDERS: no backend vendor is
+ *   selected or approved. The ledger and plan-state backend is owned by
+ *   docs/plans/cloud-authoritative-offline-first-saas/plan.md (Gate 1 vendor decision,
+ *   Gate 13 commercial binding). Rename and re-shape once that gate closes. Do not copy
+ *   these vendor-specific bindings into services/cbk-edge.
  */
 
 interface Env {

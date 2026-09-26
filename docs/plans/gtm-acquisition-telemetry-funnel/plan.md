@@ -1,5 +1,14 @@
 # Plan: Acquisition & Product Funnel Telemetry
 
+> **Dependency note (added by the cloud-authoritative SaaS pivot).** This channel stays
+> what it is: a pseudonymous, no-ledger-data event stream. When the cloud ledger lands
+> per
+> [`../cloud-authoritative-offline-first-saas/plan.md`](../cloud-authoritative-offline-first-saas/plan.md),
+> ledger data must **never** be routed to the telemetry endpoint, and the edge
+> persistence decision that is still pending here remains a separate, explicit approval.
+> Nothing in this plan is implemented beyond what its own status records, and nothing
+> below is marked complete.
+
 ## 1. Overview & Objective
 
 Measure the currently available operator journey with privacy-minimized,

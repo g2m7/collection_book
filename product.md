@@ -1,10 +1,41 @@
 # Collection Book: Product Requirements Document (PRD) & Product Specification
 
-**Version:** 1.0.0  
-**Status:** Approved for Implementation  
-**Target Market:** India (Local Cable Operators - LCOs & FTTH Internet Service Providers - ISPs)  
-**Primary Platforms:** Android (Flutter Client), Convex Reactive Cloud (Cloudflare Edge Gateway)  
+**Version:** 1.1.0 (records the cloud-authoritative SaaS pivot; superseded target-state claims in §6 and §9)
+
+**Status:** Product intent and target direction approved. **Implementation status: Stage 0 only** (this document and the plan set). No cloud, sync, identity, tenancy, RBAC, audit, or DR capability is implemented; the shipped app is local-only.
+
+**Target Market:** India (Local Cable Operators - LCOs & FTTH Internet Service Providers - ISPs)
+
+**Primary Platforms:** Android (Flutter Client). The **current** backend is local-only SQLite plus an additive Cloudflare edge slice (`services/cbk-edge`) for landing, privacy, referral, and telemetry intake. The cloud ledger is the approved *target* and is **not built**.
+
 **Runtime & Tooling Standard:** Bun runtime for backend scripts; Flutter 3.29+ / Dart 3.9+ for mobile client.
+
+### Status and Current-vs-Target Note
+
+> **Read this before the rest of the document.**
+>
+> - **CURRENT (shipped):** the product is a **local-authoritative, single-tenant, offline-first
+>   Android app**. The SQLite database on the device is the ledger. There is **no account,
+>   no cloud ledger, no synchronization, no multi-user roles, and no server-side
+>   authorization**. Customer-facing copy (landing page, privacy policy, Play Store
+>   listing) is deliberately written to that reality.
+> - **TARGET (approved direction, not implemented):** the product becomes an
+>   **offline-capable, cloud-authoritative, multi-tenant SaaS**. The cloud ledger is the
+>   system of record; SQLite becomes a **local cache plus a mutation outbox**. Offline
+>   operation is preserved as a hard requirement: writes may be accepted locally and
+>   queued, and the cloud becomes canonical after reconciliation.
+> - This document is the **product** statement. The **implementation** statement is
+>   [`docs/plans/cloud-authoritative-offline-first-saas/plan.md`](docs/plans/cloud-authoritative-offline-first-saas/plan.md),
+>   which holds the full phased checklist. **No checkbox in it is complete**, and the
+>   only rollout stage recorded as complete is **Stage 0, this documentation pivot**
+>   (documentation only). Everything from Stage 1 onward is unstarted.
+> - Earlier revisions of this document named **Convex** as the cloud ledger. That was a
+>   provisional assumption, it was never built, and **it is not a selection**. The backend
+>   vendor is an open decision gate that blocks provider-dependent work only. Do not read
+>   any Convex reference below as a commitment; **§6.3** records it as superseded history.
+> - Customer-facing copy must never lead the implementation. Nothing in this document
+>   authorizes changing shipped landing, privacy, or Play Store metadata to imply a cloud
+>   product that does not exist.
 
 ---
 
@@ -22,7 +53,7 @@ For three decades, local cable operators and small neighborhood internet provide
 
 ### 1.3 The Solution
 Collection Book provides:
-1. **100% Offline-First Speed**: Powered by local embedded SQLite. Instant search across 2,000+ subscribers with zero network latency.
+1. **100% Offline-First Speed**: Powered by local embedded SQLite. Instant search across 2,000+ subscribers with zero network latency. *(Current and preserved in the target: the client stays offline-capable, but in the target state SQLite is a cache with a durable mutation outbox rather than a competing source of truth.)*
 2. **Field-Optimized UX**: One-tap payment logging, automated arrears/advance calculation (*Clear Due Helper*), and dual-service switching (Cable TV Blue vs Fiber Green).
 3. **Zero-Cost WhatsApp Receipts**: Uses native Android platform intents (`whatsapp://send`) to deliver branded digital receipts in regional languages without Meta Cloud API fees.
 4. **MSO Parser**: Instant onboarding by parsing existing MSO billing files (Siti, DEN, GTPL, Hathway) from Excel (`.xlsx`) or HTML tables in seconds.
@@ -118,8 +149,8 @@ flowchart TD
 
 ## 4. Product Architecture & Technical Design
 
-### 4.1 Client-Side System Architecture (Flutter + SQLite)
-The mobile application operates as an autonomous, single-tenant, local SQLite database client. Zero network connectivity is required for core ledger operations.
+### 4.1 Client-Side System Architecture (Flutter + SQLite) — CURRENT SHIPPED STATE
+The mobile application **today** operates as an autonomous, single-tenant, local SQLite database client. Zero network connectivity is required for core ledger operations, and the device is the system of record. In the **target** state this same layer gains a durable mutation outbox and a sync engine, and stops being the system of record; see §6 and the SaaS plan.
 
 ```mermaid
 flowchart TD
@@ -133,7 +164,7 @@ flowchart TD
     end
 
     subgraph Service_Layer["Service & Business Logic"]
-        G["DatabaseService (SQLite v4 / v5 Migration)"]
+        G["DatabaseService (SQLite v8)"]
         H["AppModeService (Cable TV vs Fiber Mode Notifier)"]
         I["ImportService (Excel .xlsx & HTML Table Parsers)"]
         J["BackupService (Local DB Dump & System Share)"]
@@ -149,7 +180,18 @@ flowchart TD
     Service_Layer --> Storage_Layer
 ```
 
-### 4.2 Database Schema Specification (`rent_ledger.db`)
+### 4.2 Database Schema Specification (`rent_ledger.db`) — CURRENT SHIPPED STATE
+
+> **Migration blockers, deliberately left visible.** This is the schema that ships. In
+> the cloud-authoritative target it becomes a local cache schema, and four of its
+> properties block that transition: **monetary columns are SQLite `REAL`** (binary
+> floating point cannot be reconciled across devices or audited without drift),
+> **`INTEGER PRIMARY KEY AUTOINCREMENT` identifiers are device-local and can collide
+> between two offline devices**, **payments are hard-deleted rather than tombstoned**,
+> and **rows carry creation time only** (`subscribers.created_at`,
+> `payments.recorded_at`) — **no `updated_at`, no revision, no tombstone**.
+> The target schema, and the plan for changing these, are specified in
+> [`docs/plans/cloud-authoritative-offline-first-saas/plan.md`](docs/plans/cloud-authoritative-offline-first-saas/plan.md) §4.
 
 #### Table: `areas`
 Stores physical neighborhoods, wards, colonies, or collection routes.
@@ -307,112 +349,115 @@ Operators migrating from Siti, DEN, GTPL, or Hathway receive raw files from thei
 ### 5.7 Backup, Sharing & Data Protection
 * **Local SQLite Dump**: Generates a timestamped `.db` backup in application document storage.
 * **Native System Share**: Directly shares the database file to WhatsApp, Google Drive, Gmail, or SD card via `share_plus`.
-* **Restore from File**: File picker to restore database state with automatic validation.
+* **Restore from File**: File picker replaces the local database file. The current path performs no schema-version, integrity, or content validation; this is a migration blocker tracked in `docs/plans/cloud-authoritative-offline-first-saas/plan.md` §2.1.
 
 ---
 
-## 6. Cloud Backend & Synchronization Architecture (Convex + Cloudflare)
+## 6. Cloud Backend & Synchronization Architecture — TARGET (not implemented)
 
-For multi-device synchronization (Owner in office + 3 Line Boys on field), Collection Book pairs the Flutter SQLite engine with a **Convex TypeScript reactive backend** mediated by a Cloudflare Edge Gateway.
+**None of this section exists in the shipped product.** It records the approved target
+shape so that the PRD, the architecture document, and the implementation plan agree. It
+is deliberately **vendor-neutral**.
+
+For multi-device operation (Owner in the office + line boys in the field), Collection
+Book pairs the Flutter client with an **authenticated cloud ledger**. The **cloud is the
+system of record**; the device keeps a **local cache plus a durable mutation outbox**.
 
 ```mermaid
 flowchart LR
-    subgraph Mobile["Flutter Mobile App"]
-        SQLite[("Local SQLite")]
-        Queue["Offline Mutation Queue"]
+    subgraph Mobile["Flutter Client (offline-capable)"]
+        Cache[("SQLite: local cache")]
+        Outbox[("Durable mutation outbox")]
+        Engine["Sync & conflict engine"]
+        Cache --> Engine
+        Outbox --> Engine
     end
 
-    subgraph Edge["Cloudflare Workers (Edge Gateway)"]
-        CF_Auth["JWT Session Auth"]
-        CF_Webhook["Razorpay UPI Webhook Handler"]
+    subgraph Edge["Edge Gateway (existing services/cbk-edge seam)"]
+        Auth["Session verification"]
+        Webhook["Payment webhook handler"]
     end
 
-    subgraph Convex["Convex Reactive Cloud"]
-        Org_Table[("organizations")]
-        User_Table[("users")]
-        Sub_Table[("subscribers")]
-        Pay_Table[("payments")]
-        Convex_Mutations["Reactive Mutation Engine"]
+    subgraph Cloud["Cloud Ledger (provider OPEN)"]
+        Org[("organizations & memberships")]
+        Data[("subscribers, areas, collections")]
+        Ledger[("Revisions, tombstones, audit log)"]
     end
 
-    SQLite -->|Local Mutation| Queue
-    Queue -->|Background Online Flush| CF_Auth
-    CF_Auth --> Convex_Mutations
-    Convex_Mutations --> Sub_Table
-    Convex_Mutations --> Pay_Table
-    CF_Webhook -->|Plan Upgraded| Org_Table
-    Convex_Mutations -->|Delta Sync Diffs| SQLite
+    Engine -->|Authenticated HTTPS push| Auth
+    Engine -->|Delta pull since cursor| Auth
+    Auth --> Data
+    Webhook -->|Plan state| Org
+    Data --> Ledger
+    Ledger -->|Acknowledged revision| Engine
+    Engine -->|Reconcile into| Cache
 ```
 
-### 6.1 Convex Schema Blueprint (`convex/schema.ts`)
-```typescript
-import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+### 6.1 Target Domain Requirements (vendor-neutral)
 
-export default defineSchema({
-  // Organization / Operator Business Account
-  organizations: defineTable({
-    name: v.string(),
-    ownerPhone: v.string(),
-    state: v.string(),
-    plan: v.union(v.literal("free"), v.literal("starter"), v.literal("pro")),
-    planExpiresAt: v.optional(v.number()),
-    maxSubscribers: v.number(),
-    upiVpa: v.optional(v.string()),
-    createdAt: v.number(),
-  }).index("by_phone", ["ownerPhone"]),
+- **Organizations** are the tenant root. Every record is organization-scoped, and
+  scoping is enforced **server-side** on every read, write, export, and import.
+- **Memberships** carry a role: **Owner**, **Manager**, **Collector**. Authorization is a
+  server decision; the client is a usability layer only.
+- **Globally stable ids.** Every syncable entity has a client-generatable unique id. The
+  local `INTEGER PRIMARY KEY AUTOINCREMENT` row id is a device-local convenience only
+  and is **never** used as a cloud key.
+- **Money is integer minor units** (or a fixed-precision decimal), never `REAL`/`double`.
+- **Every row carries** `org_id`, `created_at`, `updated_at`, a per-entity `revision`,
+  and a lifecycle state so deletions propagate as **tombstones** rather than vanishing.
+- **Collections are append-only.** A corrected amount is a reversing entry plus a new
+  entry, not an in-place overwrite, and every entry is attributed to the collector
+  membership that took the cash.
+- **Billing period is server-derived.** A collection is attributed to a billing period
+  that the **server validates or derives** in the **organization's configured IANA
+  timezone, defaulting to `Asia/Kolkata`**. A device's clock and local timezone are
+  operator-facing context and never move a month boundary.
 
-  // Staff Accounts (Owner Admin vs Line Boy Collector)
-  users: defineTable({
-    orgId: v.id("organizations"),
-    name: v.string(),
-    phone: v.string(),
-    role: v.union(v.literal("admin"), v.literal("collector")),
-    isActive: v.boolean(),
-  }).index("by_org", ["orgId"]),
+### 6.2 Target Sync Contract Requirements
 
-  // Areas / Wards / Routes
-  areas: defineTable({
-    orgId: v.id("organizations"),
-    name: v.string(),
-    serverCreatedAt: v.number(),
-  }).index("by_org", ["orgId"]),
+- Mutations are queued durably in the **same transaction** as the operator's action, and
+  are only retired on an explicit **server acknowledgement** carrying the accepted
+  revision. No optimistic "assume it worked".
+- Delivery is **at-least-once with idempotent application**; each mutation carries a
+  stable `mutation_id` used as the idempotency key, so retries can never duplicate a
+  payment.
+- Pull is a **bounded delta since a persisted cursor**, including tombstones, with a
+  full rehydration path for a long-offline device.
+- **Conflicts are surfaced, never silently merged**, when they touch money. Two devices
+  recording the same subscriber-month keep **both** entries and require operator
+  reconciliation.
+- **Permanent rejection is a first-class outcome.** An unfixable mutation moves to a
+  **quarantine** state: retained durably, surfaced through persistent actionable
+  operator UI with a reason and a resolution action, and declared in exports. It is
+  **never silently dropped and never retried without bound**.
+- **Destructive local actions are blocked while the outbox is non-empty.** Local reset,
+  export/share of the `.db`, and restore are blocked or require an explicit data-loss
+  acknowledgement whenever unsynced or quarantined entries exist.
+- **Device loss before first sync is an accepted residual risk**, not something sync
+  solves. The offline window is a real data-loss window and the product must not claim
+  otherwise. Cloud backup does not help, because there is nothing to back up yet — which
+  is exactly why backup is not a substitute for synchronization.
+- The cloud assigns authoritative ordering; device clocks are operator-facing context
+  only.
 
-  // Subscribers
-  subscribers: defineTable({
-    orgId: v.id("organizations"),
-    areaId: v.optional(v.id("areas")),
-    localId: v.number(), // maps to local SQLite id
-    name: v.string(),
-    phone: v.optional(v.string()),
-    aliasName: v.optional(v.string()),
-    vcNumber: v.optional(v.string()),
-    monthlyRent: v.number(),
-    previousDue: v.number(),
-    serviceType: v.union(v.literal("tv"), v.literal("fiber"), v.literal("both")),
-    startYear: v.number(),
-    startMonth: v.number(),
-    isActive: v.boolean(),
-    updatedAt: v.number(),
-  })
-    .index("by_org", ["orgId"])
-    .index("by_org_and_area", ["orgId", "areaId"]),
+### 6.3 Superseded Historical Draft (Convex) — NOT A COMMITMENT
 
-  // Payments
-  payments: defineTable({
-    orgId: v.id("organizations"),
-    subscriberId: v.id("subscribers"),
-    collectedByUserId: v.id("users"),
-    year: v.number(),
-    month: v.number(),
-    amountPaid: v.number(),
-    adjustment: v.number(),
-    recordedAt: v.number(),
-  })
-    .index("by_sub", ["subscriberId"])
-    .index("by_org_month", ["orgId", "year", "month"]),
-});
-```
+An earlier revision of this PRD specified a **Convex TypeScript reactive backend** with
+tables `organizations`, `users`, `areas`, `subscribers`, and `payments`, where
+`subscribers.localId` mapped to the local SQLite row id. That draft is **superseded and
+was never built**, for three recorded reasons:
+
+1. **The vendor is not selected.** Backend choice is an explicit open decision gate
+   (see §9 and the plan's Gate 1). No provider, including Convex, may be assumed.
+2. **`localId` as a cloud key is unsound.** A device-local autoincrement id can collide
+   and diverge between two devices creating the same record offline. The cloud must own
+   globally stable identity.
+3. **Its money and versioning model were incomplete.** It kept numeric money without a
+   fixed scale, had no per-entity revision, no tombstone, and no append-only financial
+   history, all of which are required for an auditable ledger.
+
+The historical `convex/schema.ts` text is therefore not reproduced here. It is retained
+only in git history and in the superseded sections of earlier revisions.
 
 ---
 
@@ -435,12 +480,24 @@ $$\begin{aligned}
 \mathbf{\text{Total Annual Recurring Revenue (ARR):}} \quad & \mathbf{₹89,95,000\ (\approx ₹90\ \text{Lakhs\ INR}\ /\ \approx \$108,000\ \text{USD})}
 \end{aligned}$$
 
-#### Annual Infrastructure Cost at 5,000 Customers:
-* Convex Cloud Database: ~$70/mo ($\approx ₹70,000/\text{year}$)
-* Cloudflare Workers & KV: ~$5/mo ($\approx ₹5,000/\text{year}$)
-* Razorpay UPI Fees: ~2% deducted at transaction ($\approx ₹1,80,000/\text{year}$)
-* Total Infrastructure Cost: **$\approx ₹2,55,000/\text{year}$**
-* **Net Software Gross Margin: $> 97.1\%$**
+#### Annual Infrastructure Cost at 5,000 Customers (provisional, vendor-open)
+*The ledger backend is **not selected** (see §6.3 and the plan's Gate 1). The figures
+below are a **working planning model**, not a quote from a chosen provider, and they are
+the **same working model** used in
+[`docs/04-pricing-and-5k-customer-economics.md`](docs/04-pricing-and-5k-customer-economics.md)
+§4. The Convex line is retained only to show what was previously assumed; it is not a
+selection and must be replaced once the vendor gate closes.*
+
+* Cloud ledger database + storage + point-in-time backups: **provisional ~$50–$80/mo (≈ ₹50,000–₹80,000/yr)** pending the vendor decision
+* Edge gateway (existing `services/cbk-edge`) + telemetry: **provisional ~$5/mo (≈ ₹5,000/yr)**
+* Domain, SSL, CDN & misc tooling: **provisional ~$15/mo (≈ ₹15,000/yr)**
+* Razorpay UPI Fees: ~2% deducted at transaction (≈ ₹1,80,000/yr)
+* **Working total infrastructure + payment cost: ≈ ₹2,80,000/yr** (the conservative end of the provisional range)
+* **Working net software gross margin: $> 96.8\%$**
+
+The cost model must be re-derived from the selected provider before it is used for
+pricing or fundraising claims. Until then, treat both the total and the margin as
+**provisional**.
 
 ---
 
@@ -466,18 +523,33 @@ Tier 2, 3, and 4 cable operators operate almost exclusively in vernacular langua
 
 ## 9. Phased Implementation Roadmap
 
-```
-┌─────────────────────────────────┬─────────────────────────────────┬─────────────────────────────────┐
-│ PHASE 1: CLIENT ENHANCEMENT     │ PHASE 2: CLOUD SYNC & BACKEND   │ PHASE 3: MONETIZATION & GTM     │
-│ (Milestone 1)                   │ (Milestone 2)                   │ (Milestone 3)                   │
-├─────────────────────────────────┼─────────────────────────────────┼─────────────────────────────────┤
-│ • SQLite v5 migration (`phone`) │ • Initialize Convex backend     │ • Enforce 100-subscriber cap    │
-│ • WhatsApp device intent engine │ • Cloudflare Worker edge auth   │ • Razorpay UPI in-app paywall   │
-│ • 5-language regional i18n kit  │ • Offline mutation sync queue   │ • Google Play Store release     │
-│ • MSO parser mobile file-picker │ • Role-based permissions        │ • Meta Advantage+ ad campaign   │
-│ • Clear Due Helper refinement   │ • Automated daily cloud backups │ • Direct WhatsApp outbound loop │
-└─────────────────────────────────┴─────────────────────────────────┴─────────────────────────────────┘
-```
+The full staged plan, its gates, and its (entirely unchecked) checklist live in
+[`docs/plans/cloud-authoritative-offline-first-saas/plan.md`](docs/plans/cloud-authoritative-offline-first-saas/plan.md).
+The table below is the **canonical rollout sequence** and uses the same stage numbers
+and the same states as that plan and as
+[`docs/05-product-architecture-and-roadmap.md`](docs/05-product-architecture-and-roadmap.md)
+§4. **Stage 0 (documentation) is the only stage recorded as complete, and it is
+documentation only. Every stage from 1 onward is unstarted.**
+
+| Stage | Scope | State |
+| :--- | :--- | :--- |
+| **0 — Documentation pivot** | Record the cloud-authoritative target and remove the internal contradiction between "offline-first local ledger" and "cloud ledger" | **Complete (documentation only)** |
+| **1 — Local data foundations (vendor-neutral)** | Money to integer minor units with rounding tests; global ids, `updated_at`, `revision`, tombstones; durable outbox written in the same transaction as user actions. **Backend-free** | Not started — **explicitly allowed to begin before the vendor decision** |
+| **2 — Read-only cloud projection** | Authenticated one-way read of cloud state into the local cache; writes stay local and clearly labeled | Blocked on Gate 1 (vendor) |
+| **3 — Identity, tenancy, and RBAC** | Sign-in, organizations, owner/manager/collector memberships, server-side authorization, tenant-isolation negative tests | Blocked on Gate 1 (vendor) |
+| **4 — Authenticated sync, single device** | Outbox push, delta pull, idempotency, cursor resume, conflict and permanent-rejection surfacing, billing-period attribution, bounded backpressure | Blocked on Gate 1 (vendor) |
+| **5 — Multi-device and multi-user** | Additional devices, collector role in daily operation, role management, revocation, revoked-device cache treatment | Not started |
+| **6 — Migration of existing local ledgers** | Claim an existing device ledger into an organization with a verified reconciliation report | Not started |
+| **7 — Cloud authority enforced** | Device state is unambiguously a cache; unsynced and quarantined indicators; server-authoritative reports and exports | Not started |
+| **8 — Commercial, compliance, and launch** | Server-side entitlements, checkout, privacy/data-safety copy updated in the same release, local-cache security review, DR drill, legal sign-off | Not started |
+
+**The backend vendor decision (Gate 1) is still open.** It blocks **provider-dependent
+work only** — Stages 2, 3, and 4, the server-side schema, the sync transport, and audit
+storage. It does **not** block Stage 1 local foundations, the conflict/sync state
+machines behind a test double, or the cross-tenant test suites written against a
+contract. Client-side work already shipped or planned under the existing GTM plans
+(WhatsApp receipts, i18n, MSO import, clear-due helper, Play release) continues
+unchanged and is not gated by this roadmap.
 
 ---
 
@@ -489,7 +561,36 @@ Tier 2, 3, and 4 cable operators operate almost exclusively in vernacular langua
 2. **Offline Durability**:
    * Zero data loss if app is closed or phone battery dies during a transaction.
    * Full offline capability: app never blocks user actions with a loading spinner due to lack of network.
-3. **Data Sovereignty**:
-   * Operators retain 100% ownership of their data. They can export an unencrypted SQLite `.db` file at any time without paying a fee.
-4. **Tooling Rule**:
-   * Strictly adhere to `bun` as the JavaScript runtime for all backend scripts and Convex functions (no `npm` or `npx`).
+3. **Data Sovereignty (scoped by role)**:
+   * An **authorized Owner or Manager** retains 100% ownership of their data and can
+     export an unencrypted SQLite `.db` file at any time without paying a fee. *(Current
+     and preserved in the target: the local file becomes a cache export. Whether the
+     `.db` remains a formally promised artifact in the target state is an open decision
+     in the SaaS plan.)*
+   * A **Collector** holds no standing export entitlement. If the collector's role is
+     revoked, the server stops authorizing their export — but the **local cache on that
+     device is a separate, open question** (what a revoked device may still reach, and
+     whether the server can require a wipe). It is recorded as an open decision and a
+     launch security review item in the SaaS plan, and it is **not** settled by this
+     document.
+   * This guarantee is **not** a promise of persistent access to a revoked member.
+4. **Financial Integrity (Target)**:
+   * Money is integer minor units with a single documented rounding rule; no binary floating point in the ledger path.
+   * Financial records are append-only. Corrections are reversing entries, never in-place overwrites or hard deletes.
+   * Every reported financial figure states whether it includes unsynced local entries.
+   * A collection is attributed to a **server-validated or server-derived billing period** in the **organization's configured IANA timezone, default `Asia/Kolkata`**. The device clock and local timezone never move a month boundary.
+5. **Tenant Isolation (Target)**:
+   * Authorization and tenant scoping are enforced server-side on every request. Cross-tenant access fails closed and has negative test coverage.
+6. **Auditability (Target)**:
+   * Every ledger mutation records the acting membership, role, prior and new revision, authoritative server timestamp, and result. The audit log is append-only.
+7. **Local Cache Security (Target — decided during the launch security review, no library chosen here)**:
+   * Session tokens are held in **platform secure storage** (Android Keystore-backed), never in plain `SharedPreferences` and never in the SQLite database. If secure storage is unavailable, the app fails safe rather than downgrading silently.
+   * Whether the local cache is **encrypted at rest** is settled through an explicit threat model — a shared or stolen field phone is a realistic threat — and the decision and its rationale are recorded either way.
+   * Whether cached names, phone numbers, and amounts are **masked behind an app lock**, and what the recents/overview card may show, are decided rather than defaulted.
+   * A **secure export policy** is defined: default scope, default format, whether a passphrase is offered, and an explicit statement of where the shared file ends up. An export declares pending and quarantined mutations.
+8. **Sync Honesty (Target)**:
+   * A permanently rejected mutation is quarantined, retained, and surfaced with a reason and a resolution action — never silently dropped, never retried without bound, and never hidden behind a "synced" state.
+   * Local reset, `.db` export/share, and restore are blocked or require an explicit data-loss acknowledgement while unsynced or quarantined outbox entries exist.
+   * **Device loss before the first successful sync is an accepted residual risk.** The offline window is a real data-loss window; the product must not claim otherwise, and cloud backup is not a remedy for it.
+9. **Tooling Rule**:
+   * Strictly adhere to `bun` as the JavaScript runtime for all backend scripts and future backend code (no `npm` or `npx`).

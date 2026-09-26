@@ -1,5 +1,18 @@
 # Pricing Strategy & Financial Modeling: 5,000 Paying Customers
 
+> **Vendor-open / cloud-authoritative pivot notice.** This document's cost model and
+> margin are expressed against a **provisional Convex + Cloudflare assumption**. **No
+> backend vendor is selected or approved.** The approved product target is an
+> offline-capable, **cloud-authoritative, multi-tenant SaaS** in which the cloud ledger is
+> the system of record and SQLite becomes a local cache plus a mutation outbox; see
+> [`plans/cloud-authoritative-offline-first-saas/plan.md`](plans/cloud-authoritative-offline-first-saas/plan.md)
+> (Gate 1 is the vendor decision and is still open).
+>
+> The **working total (≈ ₹2,80,000/yr) and working margin (> 96.8%)** recorded in §4 below
+> are the **single figures shared with `product.md` §7.2** and are used consistently
+> across both documents. Both are **provisional** and must be re-derived from the selected
+> provider once Gate 1 closes. Nothing in this document is implemented.
+
 ## 1. Pricing Philosophy for Indian Local Operators
 
 ### The "Cost of One Lost Bill" Rule
@@ -57,7 +70,11 @@ $$\begin{aligned}
 
 ---
 
-## 4. Cost Structure & Net Margins (Convex + Cloudflare + Flutter)
+## 4. Cost Structure & Net Margins (Provisional Vendor Assumption + Cloudflare + Flutter)
+
+> **Provisional.** The ledger backend is not selected. The Convex line below records the
+> previously assumed provider only; it is not a selection and not a quote. This is the
+> **same working model** used in `product.md` §7.2 (≈ ₹2,80,000/yr total, > 96.8% margin).
 
 Because the client application utilizes an **offline-first local SQLite architecture**, cloud server calls are drastically minimized compared to traditional web apps. Server calls only fire during periodic sync flushes and backup snapshots.
 
@@ -67,20 +84,31 @@ Because the client application utilizes an **offline-first local SQLite architec
 ┌──────────────────────────────────────┬─────────────────────────┬───────────────────────────────┐
 │ Expense Category                     │ Monthly Cost (USD)      │ Annual Cost (INR @ ₹83/$)     │
 ├──────────────────────────────────────┼─────────────────────────┼───────────────────────────────┤
-│ Convex Pro Plan (Backend & DB)       │ ~$50 - $80 / mo         │ ~₹50,000 - ₹80,000 / yr       │
+│ Convex Pro Plan (PROVISIONAL       │ ~$50 - $80 / mo         │ ~₹50,000 - ₹80,000 / yr       │
+│ ASSUMPTION, not a selection)      │                         │                               │
 │ Cloudflare Workers & KV (Edge Sync)  │ ~$5 / mo                │ ~₹5,000 / yr                  │
 │ Razorpay Transaction Fees (2% on UPI)│ Variable (pass-through) │ Deducted at transaction       │
 │ Domain, SSL, CDN & Misc Tools        │ ~$15 / mo               │ ~₹15,000 / yr                 │
 ├──────────────────────────────────────┼─────────────────────────┼───────────────────────────────┤
-│ TOTAL OPERATING INFRASTRUCTURE COST  │ ~$70 - $100 / mo        │ ~₹70,000 - ₹1,00,000 / year   │
+│ WORKING TOTAL (conservative end)  │ ~$70 - $100 / mo        │ ~₹2,80,000 / yr (working)    │
 └──────────────────────────────────────┴─────────────────────────┴───────────────────────────────┘
 ```
 
-### Net Software Margin
+*Note on the totals:* the infrastructure rows above sum to ~₹70,000–₹1,00,000/yr. Adding
+the ~₹1,80,000/yr Razorpay pass-through gives a **total infrastructure + payment cost of
+~₹2,50,000–₹2,80,000/yr**. The **working figure used for the margin calculation is the
+conservative ₹2,80,000/yr**, and that same number appears in `product.md` §7.2. Do not
+quote a different total in one document than in the other.
+
+### Net Software Margin (provisional)
 
 $$\text{Gross Revenue} = ₹89,95,000$$
 $$\text{Infrastructure & Payment Gateway Cost} = ₹2,80,000$$
 $$\mathbf{\text{Net Software Gross Margin:}} \quad \mathbf{> 96.8\%}$$
+
+This margin is **provisional** and vendor-dependent. It must be recomputed against the
+provider chosen at Gate 1 of
+[`plans/cloud-authoritative-offline-first-saas/plan.md`](plans/cloud-authoritative-offline-first-saas/plan.md).
 
 ---
 
@@ -95,7 +123,7 @@ sequenceDiagram
     participant App as Flutter Client
     participant Worker as Cloudflare Edge
     participant Razorpay as Razorpay UPI Gateway
-    participant Convex as Convex Reactive Backend
+    participant Ledger as Cloud Ledger (provider OPEN, not selected)
 
     Operator->>App: Taps "Upgrade to Starter (₹1,499/yr)"
     App->>Worker: POST /create-subscription-order
@@ -105,7 +133,7 @@ sequenceDiagram
     App->>Operator: Native Sheet (GPay, PhonePe, Paytm, BHIM)
     Operator->>Razorpay: Authorize ₹1,499 via UPI PIN
     Razorpay-->>Worker: Webhook (payment.captured)
-    Worker->>Convex: Upgrade Org plan: "starter", expiresAt: Date+365d
-    Convex-->>App: Reactive sync updates subscription state
+    Worker->>Ledger: Upgrade Org plan: "starter", expiresAt: Date+365d
+    Ledger-->>App: Sync updates subscription state
     App->>Operator: Success animation & instant unlocked features
 ```

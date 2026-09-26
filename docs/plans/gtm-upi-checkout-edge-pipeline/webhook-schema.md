@@ -1,5 +1,14 @@
 # Razorpay Webhook & Edge Request/Response Schemas
 
+> **Supersession warning (added by the cloud-authoritative SaaS pivot).** This document
+> is a **provisional design draft**, not an implemented contract. The edge gateway and
+> the Razorpay HMAC webhook seam remain valid. The **"Convex backend"** participant and
+> any `orgId`-shaped field below rest on an **unselected** provider: no backend vendor is
+> chosen or approved, and the ledger/plan-state backend is owned by
+> [`../cloud-authoritative-offline-first-saas/plan.md`](../cloud-authoritative-offline-first-saas/plan.md)
+> (Gate 1 vendor decision; Gate 13 commercial binding). Treat every vendor-specific name
+> here as a placeholder to be re-decided. Nothing in this document is implemented.
+
 This document defines the schema contracts for communication between the Flutter mobile client, Cloudflare Edge Worker, Razorpay, and the Convex backend.
 
 ---

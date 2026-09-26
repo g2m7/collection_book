@@ -2,6 +2,13 @@
 
 This directory contains all technical and feature implementation plans for **Collection Book**.
 
+> **Current vs. target product.** The shipped app is a **local-authoritative, offline-first
+> Android app** with no account, cloud ledger, or sync. The approved **target** is an
+> **offline-capable, cloud-authoritative, multi-tenant SaaS** in which the cloud ledger is
+> the system of record and SQLite becomes a local cache plus mutation outbox. The target
+> is documented and **not implemented**; the backend vendor is an **open decision**.
+> See [`cloud-authoritative-offline-first-saas/`](cloud-authoritative-offline-first-saas/plan.md).
+
 ---
 
 ## 📌 Standard Operating Rule
@@ -25,7 +32,7 @@ docs/plans/
 
 ### Plan Folder Naming Examples
 
-- `docs/plans/convex-cloud-sync/`
+- `docs/plans/cloud-authoritative-offline-first-saas/`
 - `docs/plans/upi-auto-pay-integration/`
 - `docs/plans/multi-language-localization/`
 - `docs/plans/bluetooth-thermal-printer/`
@@ -47,7 +54,7 @@ Brief summary of the feature, user problem solved, and expected business/technic
 - **Out of Scope**: Deliberately deferred items.
 
 ## 3. Architecture & Technical Design
-- Schema / Database modifications (e.g., SQLite migration, Convex tables).
+- Schema / Database modifications (e.g., SQLite migration, cloud ledger tables).
 - Service / Provider layers involved.
 - UI Screens & Components affected.
 
@@ -67,17 +74,19 @@ Brief summary of the feature, user problem solved, and expected business/technic
 
 ## 📚 Plan Directory Index
 
-This index lists all **11** plan directories in the repository, including the
-GTM implementation proposals, the cross-cutting Patrol verification plan, the
-future GST workflow plan, and the VPS landing/privacy launch plan:
+This index lists all **12** plan directories in the repository, including the approved
+target SaaS architecture plan, the GTM implementation proposals, the cross-cutting
+Patrol verification plan, the future GST workflow plan, and the VPS landing/privacy
+launch plan:
 
 | Plan Directory | Focus Area | Key Architectural Deliverables |
 | :--- | :--- | :--- |
+| **[`cloud-authoritative-offline-first-saas/`](cloud-authoritative-offline-first-saas/plan.md)** | **Cloud-Authoritative, Offline-First Multi-Tenant SaaS (TARGET, not implemented)** | Approved target architecture: cloud ledger as system of record, SQLite as local cache plus durable mutation outbox, organizations and owner/manager/collector roles, server-side authorization and tenant isolation, globally stable ids, revisions and tombstones, idempotent sync with **permanent-rejection quarantine** and **blocking of reset/export/restore while unsynced**, **server-derived billing periods in the organization timezone (default `Asia/Kolkata`)**, append-only financial history with an immutable audit log, **local-cache security review** (keystore-backed tokens, cache-encryption threat model, app lock, secure export), migration blockers, staged rollout, DR, and explicit launch gates. **Every checklist item is unchecked; Stage 0 is the only complete stage; the backend vendor is an open decision that blocks provider-dependent work only, so Stage 1 local foundations may start before it closes.** It supersedes the Convex-specific target claims in `product.md` and `docs/05-product-architecture-and-roadmap.md`. |
 | **[`monorepo-cbk-edge/`](monorepo-cbk-edge/plan.md)** | **Monorepo & CBK Edge Vertical Slice** | Additive Bun workspaces, shared referral contracts, privacy-safe Cloudflare Worker landing/referral routes, Android asset links, and independent CI. |
 | **[`cbk-vps-landing-launch/`](cbk-vps-landing-launch/plan.md)** | **VPS Landing, Privacy & Launch** | Truthful no-JS landing page with honest Google Play availability states, `/privacy` policy, a Bun runtime adapter around `handleRequest`, versioned systemd/nginx deployment assets, and shared claim scanning for customer-facing copy. |
 | **[`gtm-in-app-viral-receipts/`](gtm-in-app-viral-receipts/plan.md)** | **Viral Loop & WhatsApp Receipts** | SQLite v7 phone-index migration, native Android `whatsapp://send` intent engine, five-language templates, and referral footer linked to the separate CBK edge plan. |
-| **[`gtm-freemium-paywall-licensing/`](gtm-freemium-paywall-licensing/plan.md)** | **Freemium Paywall & Licensing** | 100-subscriber freemium cap guard, MSO bulk import grace gate, vernacular upgrade bottom sheet, and Ed25519 offline-durable cryptographic license tokens. |
-| **[`gtm-upi-checkout-edge-pipeline/`](gtm-upi-checkout-edge-pipeline/plan.md)** | **1-Tap UPI Checkout & Edge Worker** | Cloudflare Edge Gateway (Bun runtime), Android UPI intent (PhonePe/GPay), Razorpay HMAC webhook verification, and Convex plan mutation. |
+| **[`gtm-freemium-paywall-licensing/`](gtm-freemium-paywall-licensing/plan.md)** | **Freemium Paywall & Licensing** | 100-subscriber freemium cap guard, MSO bulk import grace gate, vernacular upgrade bottom sheet, and Ed25519 offline-durable cryptographic license tokens. Device-local enforcement; superseded by server-side entitlements once `cloud-authoritative-offline-first-saas` Gate 13 closes. |
+| **[`gtm-upi-checkout-edge-pipeline/`](gtm-upi-checkout-edge-pipeline/plan.md)** | **1-Tap UPI Checkout & Edge Worker** | Cloudflare Edge Gateway (Bun runtime), Android UPI intent (PhonePe/GPay), Razorpay HMAC webhook verification, and a **provisional** plan-state mutation; the ledger backend named there is not selected. |
 | **[`gtm-vernacular-localization/`](gtm-vernacular-localization/plan.md)** | **Vernacular i18n Localization** | Five regional languages (Hindi, Marathi, Bengali, Tamil, English), reactive `AppLanguageService`, and grassroots jargon matrix (*bahi-khata, line boy, baqaya*). |
 | **[`gtm-android-release-aso-pipeline/`](gtm-android-release-aso-pipeline/plan.md)** | **Android Release & ASO Pipeline** | $<15\text{MB}$ AAB optimization (R8 shrinking, ProGuard), locally implemented strict `/import` and `/r/{code}` App Link routing with Digital Asset Links still pending domain verification, and regional Play Store metadata generator. |
 | **[`gtm-outbound-scraping-campaign-cli/`](gtm-outbound-scraping-campaign-cli/plan.md)** | **Outbound Scraping CLI (Bun)** | Bun TypeScript CLI pipeline ingesting public TRAI/association directories, normalizing Indian mobiles (+91 E.164), MSO brand tagging, and staged WhatsApp outreach queues. |

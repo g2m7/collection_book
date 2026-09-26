@@ -2,6 +2,14 @@
 
 **Status:** Implemented locally; deployment, DNS, production fingerprint, and manual production smoke checks pending.
 
+> **Scope note (added by the cloud-authoritative SaaS pivot).** This Worker remains a
+> landing/privacy/referral/asset-links/telemetry slice and is **not** the future ledger
+> backend. The approved target lives in
+> [`../cloud-authoritative-offline-first-saas/plan.md`](../cloud-authoritative-offline-first-saas/plan.md);
+> its backend vendor is an open decision, so the "Convex" deferral recorded below is a
+> placeholder, not a selection. Nothing in this plan's status changes and nothing below
+> is marked complete.
+
 ## 1. Overview & Objective
 
 Add an incremental Bun workspace without moving the root Flutter application, then provide the first deployable backend vertical slice at `https://cbk.sarbaa.com`. The slice supports an app-download landing page, privacy-safe referral redirects, Android Digital Asset Links, bounded errors, and deterministic tests.

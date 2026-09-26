@@ -1,5 +1,13 @@
 # Plan: India GST Billing and Invoicing
 
+> **Dependency note (added by the cloud-authoritative SaaS pivot).** The `REAL`/`double`
+> money representation and the editable payment rows this plan already identifies are
+> **launch-relevant migration blockers** in
+> [`../cloud-authoritative-offline-first-saas/plan.md`](../cloud-authoritative-offline-first-saas/plan.md)
+> (Gates 3 and 5). GST scope itself remains a future plan and is **not** made launch
+> scope by that pivot; whether it becomes launch-critical is an open decision. Nothing in
+> this plan is implemented and nothing below is marked complete.
+
 **Status:** Future implementation plan only. No GST, invoice, registration, tax-rate, SAC, legal-compliance, deployment, or manual-verification capability is implemented by this document.
 
 > **Important:** This is product and engineering planning, not tax, accounting, or legal advice. The proposed defaults, taxable-value treatment, invoice particulars, rounding, tax treatment, and release criteria require review by an Indian chartered accountant and, where needed, legal counsel before implementation or release. Rules, thresholds, notifications, SAC classifications, and invoice requirements must be re-verified for the intended release date.

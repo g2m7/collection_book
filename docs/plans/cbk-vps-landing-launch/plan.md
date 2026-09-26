@@ -7,6 +7,14 @@ target VPS. Production telemetry, the public Play listing, the signing
 fingerprint, real-device App Link verification, and broader mobile/dark-mode
 visual smoke checks remain pending.
 
+> **Scope note (added by the cloud-authoritative SaaS pivot).** This surface stays
+> truthful to the **shipped** local-only app. The approved target in
+> [`../cloud-authoritative-offline-first-saas/plan.md`](../cloud-authoritative-offline-first-saas/plan.md)
+> is cloud-authoritative, but its landing/privacy copy is **not** changed by that pivot
+> and must not imply a cloud account, cloud storage, or sync while none exists. Copy is
+> updated only in the same release that makes the capability true. This edge slice is
+> not the future ledger backend.
+
 ## 1. Overview & Objective
 
 Make `cbk.sarbaa.com` a truthful, conversion-focused public surface for

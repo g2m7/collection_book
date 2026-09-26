@@ -2,6 +2,27 @@
 
 Collection Book is an offline-first subscriber, payment, and collection ledger for Indian local cable TV and fiber internet operators. The Flutter mobile app remains at the repository root. TypeScript workspaces are additive: reusable contracts live in `packages/`, and deployable services live in `services/`.
 
+## Current and Target Product State
+
+- **Shipped today:** a **local-authoritative, offline-first Android app**. The SQLite
+  database on the device is the ledger. There is no account, no cloud ledger, no
+  synchronization, no multi-user roles, and no server-side authorization. The only
+  backend is the `services/cbk-edge` landing/privacy/referral/telemetry slice, which is
+  not a ledger backend.
+- **Approved target (not implemented):** an **offline-capable, cloud-authoritative,
+  multi-tenant SaaS**. The cloud ledger becomes the system of record and SQLite becomes a
+  **local cache plus a durable mutation outbox**, so the offline guarantee is preserved
+  while adding multi-device, multi-user, and auditable financial history. The **backend
+  vendor is an open decision**; no provider is selected or approved.
+- The plan, its migration blockers, its launch gates, and its (entirely unchecked)
+  checklist live in
+  [`docs/plans/cloud-authoritative-offline-first-saas/plan.md`](docs/plans/cloud-authoritative-offline-first-saas/plan.md).
+  Product intent is in [`product.md`](product.md).
+
+Customer-facing copy — the landing page, `/privacy`, and the Play Store listing — stays
+truthful to the **shipped** local-only app. It is not updated to imply the target exists,
+and it must be updated in the same release that makes any capability true.
+
 ## Project Map
 
 | Path | Purpose |
@@ -11,6 +32,7 @@ Collection Book is an offline-first subscriber, payment, and collection ledger f
 | `product.md` | Product requirements and product copy source |
 | `docs/` | Strategy, technical documentation, and plans |
 | `docs/plans/<name>/plan.md` | One implementation or architecture plan per directory |
+| `docs/plans/cloud-authoritative-offline-first-saas/plan.md` | Approved **target** cloud-authoritative, offline-first multi-tenant SaaS plan (not implemented; backend vendor open) |
 | `packages/contracts/` | Shared TypeScript domain contracts, canonical constants, and the unsupported-claim scanner |
 | `packages/play-store-metadata/` | Canonical five-language Play Store listing text and its Bun CLI |
 | `services/cbk-edge/` | Native Cloudflare Worker for `cbk.sarbaa.com`, its Bun VPS adapter, and the VPS deployment assets |
@@ -124,7 +146,7 @@ Configuration:
 | Other `GET` paths | Bounded JSON 404 |
 | Unsupported methods | JSON 405 with `Allow: GET` (or `Allow: POST` for the telemetry route) |
 
-Referral click persistence, payments, D1, Convex, and outbound tooling are intentionally not part of this Worker slice. The Flutter app queues its own privacy-safe analytics events and keeps them on the device while a telemetry endpoint is unavailable.
+Referral click persistence, payments, D1, Convex, and outbound tooling are intentionally not part of this Worker slice. The Flutter app queues its own privacy-safe analytics events and keeps them on the device while a telemetry endpoint is unavailable. Adding the cloud ledger described in `docs/plans/cloud-authoritative-offline-first-saas/plan.md` requires a separate approved plan and a backend vendor decision; this edge slice is not that backend, and the deferred D1/Convex references here are a placeholder, not a selection.
 
 ## Bun Adapter and VPS Hosting
 
@@ -207,3 +229,9 @@ Stage 1 is plain HTTP and is only a bring-up state: the `cbk_referral` cookie is
 ## Documentation and Plans
 
 Start with `AGENTS.md` for repository rules and `docs/INDEX.md` for the documentation map. Every plan belongs in its own `docs/plans/<name>/` directory with a `plan.md`; current external prerequisites must remain unchecked until completed.
+
+The approved product direction is the cloud-authoritative, offline-first, multi-tenant
+SaaS plan in `docs/plans/cloud-authoritative-offline-first-saas/plan.md`. It is
+documentation only: no backend vendor is selected, its Stage 1 vendor-neutral local
+foundations may start before that vendor decision closes, and no checklist item is
+complete.

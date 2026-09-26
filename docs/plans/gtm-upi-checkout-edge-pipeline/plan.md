@@ -1,5 +1,14 @@
 # Plan: 1-Tap UPI Checkout & Cloudflare Edge Webhook Pipeline
 
+> **Supersession note (added by the cloud-authoritative SaaS pivot).** The edge gateway
+> and the Razorpay HMAC webhook seam in this plan remain valid. The **"updates Convex
+> organization status"** step in §2 is a provisional assumption: no backend vendor is
+> selected, and the plan that will own the ledger and plan state is
+> [`../cloud-authoritative-offline-first-saas/plan.md`](../cloud-authoritative-offline-first-saas/plan.md)
+> (Gate 1, vendor decision; Gate 13, commercial binding). Treat the Convex reference as
+> a placeholder to be re-decided, not a commitment. Nothing in this plan is implemented
+> and nothing below is marked complete.
+
 ## 1. Overview & Objective
 In the Indian mass market, credit cards and net banking account for $< 5\%$ of micro-business SaaS transactions. Local operators expect a **1-tap payment experience directly launching their installed UPI app (PhonePe, Google Pay, Paytm, BHIM)**.
 
