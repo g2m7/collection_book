@@ -1,10 +1,29 @@
 # Plan: Android Release Packaging, App Links & ASO Pipeline
 
-> **Direction note.** This plan carries the Play launch, which is priority 2 in
-> [`../play-launch-then-cloud-direction/plan.md`](../play-launch-then-cloud-direction/plan.md),
-> after the pre-launch data-safety fixes. With Play App Signing, the asset-links
-> fingerprint must be the Play app-signing key SHA-256 from Play Console, not the upload
-> key (see that plan's §3.2).
+> **Direction note.** This plan carries the Google Play release. Under the canonical
+> direction, the public release is **late-stage work**: it runs at the public release gate
+> in
+> [`../cloud-authoritative-offline-first-saas/plan.md`](../cloud-authoritative-offline-first-saas/plan.md)
+> §11, after Stages 0–8 and Gates 1–14, and not before. With Play App Signing, the
+> asset-links fingerprint must be the Play app-signing key SHA-256 from Play Console,
+> not the upload key (see the historical mechanics in
+> [`../play-launch-then-cloud-direction/plan.md`](../play-launch-then-cloud-direction/plan.md) §3.2).
+> Everything here — signing, AAB size, listing, screenshots, data-safety form, publish —
+> remains **pending** and is not started by this direction change.
+>
+> **Gate guardrail for this plan.** Do not build or upload anything in this plan as a
+> *public local-only launch*. Two prohibitions apply and both are in force now:
+> - **No public listing, upload, or publish before Gate 15.** Internal builds, Play
+>   private-track and closed-test builds, and invited-tester builds are allowed before
+>   then; the public release is not. The listing, the landing page, `/privacy`, and the
+>   Play data-safety disclosure change **in the same release** that makes a cloud
+>   capability true, and that release is Gate 15 (review of the data-safety form closes
+>   at Gate 11; its submission and publication are part of Gate 15).
+> - **No listing copy may name a price, a paid tier, a subscriber cap, or a cloud
+>   capability that has not shipped.** The commercial gate (Gate 13, §11) decides the
+>   offer, and the shipped app today is **local-only** with no cloud account or sync. The
+>   claim scanner in `packages/play-store-metadata/src/claims.ts` is the enforcement
+>   point.
 
 ## 1. Overview & Objective
 In Tier 2/3/4 India, mobile data bandwidth is precious and phone storage is constrained (predominantly 32GB–64GB budget Android devices). High APK download sizes (> 30MB) result in up to $40\%$ drop-off before app installation completes.
@@ -77,12 +96,20 @@ android {
 
 ### 3.2 Deep Linking Flow (`assetlinks.json`)
 
+> **Corrected route set.** The two App Link routes that exist are exactly `/import` and
+> `/r/{code}`, accepted only for the exact canonical HTTPS origin. **There is no
+> `/paywall` route** — no paywall or upgrade surface ships before Gate 13 decides the
+> offer, and no such route may be added to the manifest or the router on the strength of
+> this diagram. The "not installed" branch below is also **pending Gate 15**: until the
+> public listing exists it lands on the landing page's honest availability state, not on
+> a Play Store listing.
+
 ```mermaid
 flowchart LR
     A["Operator clicks Meta Reel Ad / WhatsApp Link"] --> B{"App Installed?"}
     B -- Yes --> C["Android App Link launches Collection Book"]
-    C --> D["Routes to /import or /paywall directly"]
-    B -- No --> E["Google Play Store Listing"]
+    C --> D["Routes to /import or a valid /r/{code} referral"]
+    B -- No --> E["Google Play Store Listing (exists only after Gate 15)"]
     E --> F["Post-install deferred deep link"]
 ```
 
@@ -122,6 +149,7 @@ complaint justifies the navigation risk.
   - [ ] Native-language editorial review of the four vernacular listings. Automated policy and terminology checks pass, including regression assertions for known malformed tokens and for the required `assets/i18n` vocabulary per locale, but no native speaker or professional translator has approved the copy. This must be done before any Play upload.
   - [ ] Package high-converting vernacular screenshots (1080x1920). Not started; this is manual design work.
   - [ ] Paste the generated files into Google Play Console and submit each listing for review. No listing has been uploaded or published.
+  - [ ] **Listing-state gate:** do not upload, submit, or publish a listing before **Gate 15** (§11), and re-verify at that gate that the listing, `/privacy`, and the Gate 11 data-safety disclosure describe the shipped **cloud** product rather than the current local-only app. The data-safety form is reviewed and ready-to-submit at Gate 11; submitting and publishing it is part of the Gate 15 release.
 
 ---
 

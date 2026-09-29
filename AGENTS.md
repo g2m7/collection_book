@@ -9,6 +9,7 @@ Canonical repository contract for the Collection Book Flutter app and its additi
 | `lib/`, `test/`, `patrol_test/`, `assets/`, `pubspec.yaml` | Root Flutter application, lower-layer tests, and Patrol E2E tests |
 | `android/`, `ios/` | Root Flutter platform projects |
 | `packages/contracts/` | Shared TypeScript domain contracts and constants |
+| `packages/play-store-metadata/` | Canonical five-language Play Store listing text and its `aso:generate` / `aso:check` Bun CLI |
 | `services/` | Deployable services; `services/cbk-edge/` is the Worker |
 | `docs/plans/<plan-name>/` | One directory and `plan.md` per plan |
 | `product.md` | Product requirements and source product information |
@@ -18,12 +19,14 @@ The Flutter app stays at repository root. Do not move `lib/`, `test/`, `android/
 
 ## Project Direction
 
-The overall direction is `docs/plans/play-launch-then-cloud-direction/plan.md`. Read it before choosing what to work on.
+The canonical overall direction is `docs/plans/cloud-authoritative-offline-first-saas/plan.md`, including its staged rollout (§9) and launch gates (§11). Read it before choosing what to work on. The earlier "launch the local-only app on Google Play first" decision in `docs/plans/play-launch-then-cloud-direction/plan.md` is **superseded** and is a historical record only; do not follow its §1, §3.6, §5, or §7.
 
-1. **Track A first:** launch the current local-only app on Google Play as a free app. Pre-launch data-safety fixes (safe restore, off-device backup reminder) come before publishing.
-2. **Track B next:** the cloud-authoritative SaaS in `docs/plans/cloud-authoritative-offline-first-saas/plan.md`. Its Stage 1 local data foundations ship as the first post-launch update; the Gate 1 vendor decision runs in parallel.
-3. **Follow the priority order** in that plan's §5. Paywall, UPI checkout, outbound tooling, GST, and a telemetry sink are not part of the Play launch.
-4. **Until Stage 1 ships,** do not add `REAL`/`double` money columns, new device-scoped autoincrement identities for syncable records, or new hard-delete paths for financial records.
+1. **SaaS-first:** build the cloud-authoritative offline-first SaaS. Cloud Stage 1 (local data foundations) comes **before** the public Google Play launch, and **Stages 0–8 and Gates 1–14 close before the public Play release**, which is Gate 15. The local-only app is not published publicly first. Stage 1 is the local counterpart of Gates 2–5, and Stage 8 only **prepares and reviews** the launch material — **Gate 15 publishes it**.
+2. **Gate 1 runs in parallel:** the backend vendor decision is decision work and does not block Stage 1 or any other vendor-neutral work.
+3. **Play release work is late-stage and still pending:** signing, the Play app-signing asset-links fingerprint, the listing, screenshots, the data-safety form, publish, `PLAY_STORE_URL`, and manual device checks happen at the public release gate, not before it.
+4. **Public onboarding is account/organization/cloud-first,** with offline writes and an explicit, visible unsynced-risk indicator. The **free entry path is retained** as an affordable entry, but its boundaries, any limits, and the paid prices around it stay **provisional** until the commercial gate (Gate 13) closes; no copy may promise "free forever", state a price, or name a specific subscriber cap, and a downgrade must still leave authorized members able to read and export records they already have. Existing local/test/sideload data needs an **optional, verified** claim/import path with no coercive paid migration, no data loss, and no double counting.
+5. **Until Stage 1 ships,** do not add `REAL`/`double` money columns, new device-scoped autoincrement identities for syncable records, or new hard-delete paths for financial records.
+6. **Keep shipped copy truthful.** The landing page, `/privacy`, and the Play Store metadata describe the shipped local-only app until the cloud capability is real, and the privacy and Play data-safety disclosures change **in the same release** that makes the capability true.
 
 ## Non-Negotiable Tooling and Planning Rules
 
@@ -60,6 +63,7 @@ From the repository root:
 - Format check: `bun run format:check`
 - Typecheck: `bun run typecheck`
 - Tests: `bun test`
+- Play listing metadata check: `bun run aso:check` (also inside `bun run verify:bun`)
 - Worker dry-run build: `bun run build:worker`
 - All Bun gates: `bun run verify:bun`
 - All repository gates: `bun run verify:all`
@@ -152,7 +156,7 @@ Retain `test/` unit and widget tests for lower layers. Add or update tests for i
 - [ ] Relevant code and documentation are formatted.
 - [ ] Flutter analyze, unit/widget tests, Patrol compile gate, and affected Patrol device journeys pass; any unavailable device-only run is explicitly identified.
 - [ ] User-visible changes have updated Patrol coverage and stable production keys where needed.
-- [ ] Bun format check, typecheck, tests, and Worker dry-run pass.
+- [ ] Bun format check, typecheck, tests, Play metadata check (`bun run aso:check`), and Worker dry-run pass.
 - [ ] `git diff --check` passes.
 - [ ] `git diff --cached` is empty unless the user explicitly authorized staging.
 - [ ] No debug prints, placeholder code, fake metrics, fake fingerprints, or secrets remain.

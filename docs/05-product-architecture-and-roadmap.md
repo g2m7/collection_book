@@ -3,11 +3,14 @@
 > **Status of this document.** Sections 1 and 2 describe the **shipped, current**
 > product. Section 3 describes the **approved target architecture, which is not
 > implemented**. The staged plan, gates, and unchecked checklist live in
-> [`plans/cloud-authoritative-offline-first-saas/plan.md`](plans/cloud-authoritative-offline-first-saas/plan.md).
-> Product intent lives in [`../product.md`](../product.md). The overall work order
-> (Play launch of the local-only app first, cloud Stage 1 as the first post-launch
-> update) is in
-> [`plans/play-launch-then-cloud-direction/plan.md`](plans/play-launch-then-cloud-direction/plan.md).
+> [`plans/cloud-authoritative-offline-first-saas/plan.md`](plans/cloud-authoritative-offline-first-saas/plan.md),
+> which is also the **canonical overall work order**: Stages 0–8 and Gates 1–14 close
+> **before** the public Google Play release, which is Gate 15, and cloud Stage 1 is a
+> pre-launch item.
+> Product intent lives in [`../product.md`](../product.md). The earlier Play-first
+> direction in
+> [`plans/play-launch-then-cloud-direction/plan.md`](plans/play-launch-then-cloud-direction/plan.md)
+> is **superseded** and is historical only.
 
 ---
 
@@ -285,17 +288,23 @@ unstarted.**
 | 5 — Multi-device and multi-user | Additional devices, collector operation, revocation, revoked-device cache treatment | Not started |
 | 6 — Migration of existing ledgers | Claim a device ledger into an organization with a reconciliation report | Not started |
 | 7 — Cloud authority enforced | Device state is unambiguously a cache; unsynced and quarantined indicators; server-authoritative reports and exports | Not started |
-| 8 — Commercial, compliance, and launch | Server-side entitlements, checkout, privacy/data-safety copy, local-cache security review, DR drill, legal sign-off | Not started |
+| 8 — Commercial, compliance, and launch | Server-side entitlements, checkout, launch security review, DR drill, legal sign-off, and the privacy/data-safety copy **prepared, reviewed, and ready to publish** (publication is Gate 15) | Not started |
 
 **The backend vendor decision (Gate 1) is still open.** It blocks **provider-dependent
 work only** — Stages 2, 3, and 4, the server-side schema, the sync transport, and audit
 storage. It does **not** block Stage 1 local foundations, the conflict/sync state
 machines behind a test double, or the cross-tenant test suites written against a
 contract. Client-side work under the existing GTM plans (WhatsApp receipts, i18n, MSO
-import, clear-due helper, Play release) continues unchanged and is not gated by this
-roadmap.
+import, clear-due helper) continues unchanged and is not gated by this
+roadmap. The **Play release itself is gated**: it is the public release gate.
 
-**Sequencing relative to the Play launch.** The current local-only app launches on
-Google Play first, Stage 1 ships as the first post-launch update, and Gate 1 runs in
-parallel. See
-[`plans/play-launch-then-cloud-direction/plan.md`](plans/play-launch-then-cloud-direction/plan.md).
+**Sequencing relative to the Play launch (canonical, 2026-09-30).** The public Google
+Play release is **Gate 15**, and it runs **after** Stages 0–8 and Gates 1–14; it is not a
+Stage 8 action, because Stage 8 only prepares and reviews the launch material that Gate 15
+publishes. **Stage 1 is the local counterpart of Gates 2–5** (global id strategy, money
+representation, local sync foundations, append-only financial history) and runs before the
+public launch, Gate 1 runs in parallel, and the Play release (Gate 15) carries the
+synchronized privacy and data-safety changes; Play mechanics and manual device checks stay
+pending until then. See
+[`plans/cloud-authoritative-offline-first-saas/plan.md`](plans/cloud-authoritative-offline-first-saas/plan.md)
+§9–§11.

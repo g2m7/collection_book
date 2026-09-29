@@ -18,13 +18,24 @@ Collection Book is an offline-first subscriber, payment, and collection ledger f
   checklist live in
   [`docs/plans/cloud-authoritative-offline-first-saas/plan.md`](docs/plans/cloud-authoritative-offline-first-saas/plan.md).
   Product intent is in [`product.md`](product.md).
-- **Overall direction:** launch the current local-only app on Google Play as a free app
-  first, then build the cloud target, with its Stage 1 as the first post-launch update.
-  See [`docs/plans/play-launch-then-cloud-direction/plan.md`](docs/plans/play-launch-then-cloud-direction/plan.md).
+- **Overall direction (SaaS-first, 2026-09-30):** build the cloud target and close
+  Stages 0–8 and Gates 1–14 **before** the app is published on Google Play; cloud Stage 1
+  is a pre-launch item (the local counterpart of Gates 2–5) and the Gate 1 vendor
+  decision runs in parallel. The public release is **Gate 15, after Stage 8** — Stage 8
+  prepares and reviews the launch material, Gate 15 publishes it. The earlier
+  "launch the local-only app first" decision is **superseded** and kept as history in
+  [`docs/plans/play-launch-then-cloud-direction/plan.md`](docs/plans/play-launch-then-cloud-direction/plan.md).
+  See [`docs/plans/cloud-authoritative-offline-first-saas/plan.md`](docs/plans/cloud-authoritative-offline-first-saas/plan.md).
 
 Customer-facing copy — the landing page, `/privacy`, and the Play Store listing — stays
 truthful to the **shipped** local-only app. It is not updated to imply the target exists,
-and it must be updated in the same release that makes any capability true.
+and it must be updated in the same release that makes any capability true. That includes
+the Play data-safety disclosure, which changes in the release that introduces the cloud
+ledger. The free entry path is retained as an affordable entry, but its boundaries, any
+limits, and prices are **provisional** until the commercial gate closes; no copy may
+promise "free forever", state a price, or name a specific subscriber cap, and a
+downgrade must still leave authorized members able to read and export the records they
+already have.
 
 ## Project Map
 
@@ -35,7 +46,7 @@ and it must be updated in the same release that makes any capability true.
 | `product.md` | Product requirements and product copy source |
 | `docs/` | Strategy, technical documentation, and plans |
 | `docs/plans/<name>/plan.md` | One implementation or architecture plan per directory |
-| `docs/plans/cloud-authoritative-offline-first-saas/plan.md` | Approved **target** cloud-authoritative, offline-first multi-tenant SaaS plan (not implemented; backend vendor open) |
+| `docs/plans/cloud-authoritative-offline-first-saas/plan.md` | Canonical overall direction and **target** cloud-authoritative, offline-first multi-tenant SaaS plan (not implemented; backend vendor open) |
 | `packages/contracts/` | Shared TypeScript domain contracts, canonical constants, and the unsupported-claim scanner |
 | `packages/play-store-metadata/` | Canonical five-language Play Store listing text and its Bun CLI |
 | `services/cbk-edge/` | Native Cloudflare Worker for `cbk.sarbaa.com`, its Bun VPS adapter, and the VPS deployment assets |
@@ -64,11 +75,27 @@ the generated WhatsApp receipt language.
 Useful checks:
 
 ```sh
-dart format --output=none --set-exit-if-changed lib test
+dart format --output=none --set-exit-if-changed lib test patrol_test
 flutter analyze
 flutter test
 flutter build apk --debug
 ```
+
+### Patrol (end-to-end)
+
+Patrol is the end-to-end standard. The CLI version is pinned:
+
+```sh
+dart pub global activate patrol_cli 4.8.0   # keep this version pinned
+patrol doctor                              # environment/toolchain check
+patrol build android --debug               # Android compile gate (run under JDK 17)
+patrol test                                # device run; add --device <device_id> if several are connected
+```
+
+`patrol test` needs a connected Android device or emulator. When none is available, keep
+that run honestly pending and still run `patrol build android --debug`. The normal CI
+Flutter job runs format, analyze, `flutter test`, and the `patrol build android --debug`
+compile gate; the emulator device run is a separate, opt-in workflow.
 
 ## Bun Workspace Setup and Checks
 
@@ -83,7 +110,7 @@ bun run aso:check
 bun run build:worker
 ```
 
-`bun run build:worker` invokes `wrangler deploy --dry-run` inside `services/cbk-edge`; it does not deploy the Worker or change DNS. `bun run serve:edge` starts the Bun VPS adapter on loopback for local checks. Run `bun run verify:bun` for all TypeScript gates or `bun run verify:all` for the TypeScript and Flutter gates.
+`bun run build:worker` invokes `wrangler deploy --dry-run` inside `services/cbk-edge`; it does not deploy the Worker or change DNS. `bun run serve:edge` starts the Bun VPS adapter on loopback for local checks. Run `bun run verify:bun` for all TypeScript gates, which is exactly what the CI Bun job runs. `bun run verify:all` is the **local superset**: `verify:bun` plus `dart format`, `flutter analyze`, `flutter test`, a debug APK build, and the `patrol build android --debug` compile gate. It is a convenience wrapper, not the CI contract, so it can fail on a local toolchain (for example a missing Patrol CLI) where CI would not.
 
 ## Play Store Listing Metadata
 
@@ -233,10 +260,13 @@ Stage 1 is plain HTTP and is only a bring-up state: the `cbk_referral` cookie is
 
 Start with `AGENTS.md` for repository rules and `docs/INDEX.md` for the documentation map. Every plan belongs in its own `docs/plans/<name>/` directory with a `plan.md`; current external prerequisites must remain unchecked until completed.
 
-The overall work order is `docs/plans/play-launch-then-cloud-direction/plan.md`: Play
-launch of the local-only app first, then the cloud target. The approved target
-architecture is the cloud-authoritative, offline-first, multi-tenant SaaS plan in
-`docs/plans/cloud-authoritative-offline-first-saas/plan.md`. It is
-documentation only: no backend vendor is selected, its Stage 1 vendor-neutral local
-foundations may start before that vendor decision closes, and no checklist item is
-complete.
+The overall work order is `docs/plans/cloud-authoritative-offline-first-saas/plan.md`:
+Stages 0–8 and Gates 1–14 first, public Google Play release last (Gate 15, which
+publishes what Stage 8 prepares and reviews). The prior
+Play-first direction plan in `docs/plans/play-launch-then-cloud-direction/plan.md` is
+**superseded** history; only its release-mechanics and data-safety notes still apply. Both
+are documentation only: no backend vendor is selected and the Stage 1 vendor-neutral local
+foundations may start before that vendor decision closes. No **implementation, release, or
+external** item in either plan is complete. The completed documentation-only records
+are the cloud plan's **Stage 0 pivot** and the superseded plan's historical direction
+record; neither represents a shipped feature.

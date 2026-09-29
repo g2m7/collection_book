@@ -2,6 +2,29 @@
 
 This matrix establishes the standardized vocabulary for cable operators and broadband technicians across the 5 target regional languages.
 
+> **How to read this matrix.** §1 is the implemented operational vocabulary. **§2 and the
+> `backup_cloud` row are quarantined draft strings, not approved copy, and they are not in
+> the shipped catalogs.** They are kept only as historical input to the commercial gate
+> decision.
+>
+> - **The `backup_cloud` key is BLOCKED.** The app has no cloud backup, no cloud account,
+>   and no sync. Do not add this key, or any localized cloud-backup/cloud-sync string, to
+>   `assets/i18n/` until a real cloud capability ships **and** the landing page, `/privacy`,
+>   and the Play data-safety disclosure change in the same release. See
+>   [`../cloud-authoritative-offline-first-saas/plan.md`](../cloud-authoritative-offline-first-saas/plan.md)
+>   §9.1.
+> - **The §2 paywall/value-proposition strings are BLOCKED** on price, tier, and cap
+>   grounds. The commercial gate (Gate 13) has not decided the free entry path's
+>   boundary, any cap, or any price, and no "free forever" claim may be made. See the same
+>   plan's §11. The shared claim scanner does **not** currently inspect `assets/i18n/`;
+>   a translated string needs manual review or a dedicated catalog check before shipping.
+> - The value anchors are **illustrative economics sketches**, not tested claims. Do not
+>   publish them as measured results.
+>
+> When a decision is made and the corresponding capability ships, review the translated
+> string before adding it to `assets/i18n/` and update this matrix. `bun run aso:check`
+> validates Play listing metadata, **not** the app's localized catalogs.
+
 ---
 
 ## 1. Core Operational Concepts
@@ -26,7 +49,11 @@ This matrix establishes the standardized vocabulary for cable operators and broa
 
 ---
 
-## 2. Paywall & Value Proposition Strings
+## 2. Paywall & Value Proposition Strings — QUARANTINED DRAFT, NOT APPROVED COPY
+
+> **Do not implement, translate into a catalog, or publish any string in this section.**
+> Each CTA below names a price and a paid upgrade action that Gate 13 has not decided.
+> These are pre-gate drafting examples retained for the commercial decision only.
 
 ### Hindi
 * **Anchor**: *"सिर्फ 3 ग्राहकों के बकाया पैसे बचने पर पूरे साल का खर्च वसूल!"*

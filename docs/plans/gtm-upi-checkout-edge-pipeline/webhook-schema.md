@@ -1,15 +1,27 @@
 # Razorpay Webhook & Edge Request/Response Schemas
 
-> **Supersession warning (added by the cloud-authoritative SaaS pivot).** This document
-> is a **provisional design draft**, not an implemented contract. The edge gateway and
-> the Razorpay HMAC webhook seam remain valid. The **"Convex backend"** participant and
-> any `orgId`-shaped field below rest on an **unselected** provider: no backend vendor is
-> chosen or approved, and the ledger/plan-state backend is owned by
+> ## NON-NORMATIVE — BLOCKED BY GATE 1
+>
+> **Status: provisional design draft, not an implemented contract, and not selectable
+> against a real backend.** The backend vendor decision is **Gate 1** of
 > [`../cloud-authoritative-offline-first-saas/plan.md`](../cloud-authoritative-offline-first-saas/plan.md)
-> (Gate 1 vendor decision; Gate 13 commercial binding). Treat every vendor-specific name
-> here as a placeholder to be re-decided. Nothing in this document is implemented.
+> §11 and it is **still open**. The **"Convex backend"** participant, the `orgId` field,
+> the `tier` values, the amount `149900`, and the `licenseToken` in the status response
+> all rest on an **unselected** provider and an **undecided** offer. Treat every
+> vendor-specific name here as a placeholder to be re-decided. Nothing in this document
+> is implemented, and no consumer may treat it as a wire contract.
+>
+> **Do not replace the gap with an invented mutation endpoint.** The missing piece is
+> the plan-state write after a captured payment, and that shape is undefined until the
+> vendor is selected. This document deliberately does **not** define a generic or
+> vendor-neutral replacement endpoint; Gate 1 records the decision that determines it.
+>
+> **What stays valid:** the edge gateway routes, the `x-razorpay-signature` HMAC-SHA256
+> verification seam over the raw body, the Razorpay `payment.captured` payload shape, and
+> the client polling fallback. Those are provider-neutral and may be designed and tested
+> against a contract today.
 
-This document defines the schema contracts for communication between the Flutter mobile client, Cloudflare Edge Worker, Razorpay, and the Convex backend.
+This document defines the schema contracts for communication between the Flutter mobile client, Cloudflare Edge Worker, Razorpay, and the **backend ledger/plan-state service (provider OPEN, not selected; the Convex names below are non-normative placeholders)**.
 
 ---
 
@@ -18,6 +30,11 @@ This document defines the schema contracts for communication between the Flutter
 ### Endpoint: `POST /api/v1/checkout/create-order`
 
 #### Request Payload (Client $\rightarrow$ Edge)
+
+> **Provisional.** `orgId` presumes a server-side organization identity that the target
+> does not have yet, and `tier`/`billingCycle` are undecided values. The amounts, tier
+> names, and field set are re-derived after the backend and commercial decisions close.
+
 ```json
 {
   "orgId": "org_9823412093",
@@ -29,6 +46,11 @@ This document defines the schema contracts for communication between the Flutter
 ```
 
 #### Response Payload (Edge $\rightarrow$ Client)
+
+> **Provisional.** The amount, the `upiIntentUri` placeholder, and the exposed
+> `razorpayKey` are illustrative and must be re-derived once the payment provider and the
+> offer are decided (Gate 1 and Gate 13, §11).
+
 ```json
 {
   "success": true,
@@ -85,6 +107,12 @@ This document defines the schema contracts for communication between the Flutter
 ### Endpoint: `GET /api/v1/checkout/status?order_id=order_NX829103kLm`
 
 #### Response Payload
+
+> **Provisional, and partly superseded.** `tier` and `planExpiresAt` assume a
+> server-derived plan, which is the target shape; `licenseToken` is the
+> **superseded device-local token** and becomes a cached, expiring grant once
+> entitlements are server-side (canonical §9.1).
+
 ```json
 {
   "status": "completed",

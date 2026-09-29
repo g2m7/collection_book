@@ -1,5 +1,12 @@
 # Market & Competitor Intelligence: Indian Cable TV & FTTH Sector
 
+> **Note on commercial claims.** The pricing and free-tier figures in this document are
+> historical market-research snapshots, not approved product copy. The affordable **free
+> entry path is retained**, but its limits and the surrounding prices stay **provisional**
+> until the commercial gate (Gate 13) closes; no shipped copy may promise "free forever",
+> state a price, or name a specific subscriber cap. See
+> [`plans/cloud-authoritative-offline-first-saas/plan.md`](plans/cloud-authoritative-offline-first-saas/plan.md) §9.1 and §11 Gate 13.
+
 ## 1. Executive Summary & Market Sizing
 
 This document establishes verified, regulatory-backed data for the Indian Local Cable Operator (LCO) and small Internet Service Provider (ISP / FTTH) market.
@@ -49,7 +56,7 @@ The two primary software players operating in this domain are **BixApp (Bix42)**
    * **100% Offline-First SQLite**: Zero latency, works anywhere without a network.
    * **Native MSO Excel/HTML Parser**: Imports raw Siti/DEN/GTPL export files directly from WhatsApp in 30 seconds with no manual data entry.
    * **Zero-Cost WhatsApp Receipts**: Uses device intent (`whatsapp://send`), eliminating SMS costs and API gateway dependencies.
-   * **Self-Serve Freemium**: Free up to 100 subscribers, self-upgradeable via UPI without talking to a salesperson.
+   * **Self-Serve Freemium** *(research snapshot, not approved copy)*: an affordable free entry path with a provisional boundary, self-upgradeable via UPI without talking to a salesperson. The exact cap and prices are **provisional** until Gate 13.
 
 ---
 

@@ -4,6 +4,17 @@
 
 **Backend dependency:** The public referral landing/redirect service is tracked separately in [`../monorepo-cbk-edge/plan.md`](../monorepo-cbk-edge/plan.md).
 
+> **Direction note — the receipt points at the landing page, not at Google Play.** The
+> viral loop is built on the **landing/referral URL** (`https://cbk.sarbaa.com/r/{code}`),
+> which honestly reports Play availability. It must **not** become a "Download on Google
+> Play" call to action: the app is **not publicly listed until Gate 15** in
+> [`../cloud-authoritative-offline-first-saas/plan.md`](../cloud-authoritative-offline-first-saas/plan.md)
+> §11, and a Play install CTA in a receipt before then would send operators to a listing
+> that does not exist. The footer is also **copy-blocked** until Gate 13 (§11): no price,
+> no paid/free tier name, no subscriber cap, and no "free forever" claim. The shipped
+> receipt template is the source of truth and carries neither. Any Play CTA requires
+> both gates to close and must ship with the release that makes the listing real.
+
 ## 1. Overview & Objective
 Local Cable Operators (LCOs) and FTTH technicians interact with 100 to 2,000+ customers monthly. Every collection is an opportunity for customer trust and organic viral acquisition. This plan specifies the engineering architecture for:
 1. **Zero-Cost WhatsApp Receipts**: Generating and dispatching instant payment receipts via native Android platform intents (`whatsapp://send`), eliminating recurring Meta Cloud API / BSP fees.
@@ -76,11 +87,11 @@ The receipt message follows a structured layout:
 2. **Subscriber Details**: Name, Service Type (Cable TV / Fiber Internet), VC # or Box ID, Area.
 3. **Billing Breakdown**: Billed Month, Amount Collected, Previous Dues, Remaining Arrears.
 4. **Collector Signature**: Operator business name & contact.
-5. **The Trojan Horse Footer**:
+5. **The Trojan Horse Footer** *(shipped copy: a landing/referral link only. It must stay a landing/referral link and must not become a Google Play install CTA before Gate 15, and it must never carry a price, a paid/free tier name, a subscriber cap, or a "free forever" claim before Gate 13 — see the direction note at the top of this plan)*:
    ```text
    ━━━━━━━━━━━━━━━━━━━━━
    📱 Managed via Collection Book App
-   👉 Cable/WiFi Operator? Try Free (up to 100 subs): cbk.sarbaa.com/r/OP9821
+   👉 Cable/WiFi Operator? Try Collection Book: cbk.sarbaa.com/r/OP9821
    ```
 
 ---
@@ -125,4 +136,4 @@ The receipt message follows a structured layout:
 ### Manual Verification (Pending)
 - [ ] Test payment creation and receipt dispatch on an Android physical device with WhatsApp installed.
 - [ ] Test a device without WhatsApp installed and confirm the `https://wa.me` fallback.
-- [ ] Verify that clicking the Trojan Horse link routes to the app installation landing page with referral query parameters preserved.
+- [ ] Verify that clicking the Trojan Horse link routes to the app installation landing page with referral query parameters preserved. Until Gate 15 the landing page reports Play availability honestly; it does not link to a public Play listing, because none exists.

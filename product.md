@@ -33,10 +33,18 @@
 >   provisional assumption, it was never built, and **it is not a selection**. The backend
 >   vendor is an open decision gate that blocks provider-dependent work only. Do not read
 >   any Convex reference below as a commitment; **§6.3** records it as superseded history.
-> - **Overall direction (approved 2026-09-27):** launch the current local-only app on
->   Google Play as a free app first, then build the cloud target, with cloud Stage 1 as
->   the first post-launch update. The sequence, launch guardrails, and priority order are
->   in [`docs/plans/play-launch-then-cloud-direction/plan.md`](docs/plans/play-launch-then-cloud-direction/plan.md).
+> - **Overall direction (approved 2026-09-30, revised):** the product is **SaaS-first**.
+>   The cloud-authoritative stages and Gates 1–14 close **before** the current
+>   app is published on Google Play (Gate 15); cloud Stage 1 is **not** a post-launch
+>   update. The earlier "launch the local-only app first" direction is **superseded** and
+>   kept as
+>   history in
+>   [`docs/plans/play-launch-then-cloud-direction/plan.md`](docs/plans/play-launch-then-cloud-direction/plan.md).
+>   The canonical sequencing, staged rollout, launch gates, and public-onboarding
+>   requirements are in
+>   [`docs/plans/cloud-authoritative-offline-first-saas/plan.md`](docs/plans/cloud-authoritative-offline-first-saas/plan.md)
+>   §9–§11. Publishing the local-only app first was reversed because it would force a
+>   later account, pricing, and data migration on the operators the product serves.
 > - Customer-facing copy must never lead the implementation. Nothing in this document
 >   authorizes changing shipped landing, privacy, or Play Store metadata to imply a cloud
 >   product that does not exist.
@@ -61,7 +69,14 @@ Collection Book provides:
 2. **Field-Optimized UX**: One-tap payment logging, automated arrears/advance calculation (*Clear Due Helper*), and dual-service switching (Cable TV Blue vs Fiber Green).
 3. **Zero-Cost WhatsApp Receipts**: Uses native Android platform intents (`whatsapp://send`) to deliver branded digital receipts in regional languages without Meta Cloud API fees.
 4. **MSO Parser**: Instant onboarding by parsing existing MSO billing files (Siti, DEN, GTPL, Hathway) from Excel (`.xlsx`) or HTML tables in seconds.
-5. **Freemium Self-Serve Pricing**: A permanent **Free Tier (up to 100 subscribers)** that transitions into a disruptive **₹1,499/year Starter Plan** with instant UPI checkout.
+5. **Freemium Self-Serve Pricing (provisional, pending the commercial gate):** the
+   direction retains an **affordable free entry path**, with the paid tiers below as
+   planning intent — a planned **Free entry path (100-subscriber limit not yet decided)**
+   transitioning into a **₹1,499/year Starter Plan** with instant UPI checkout. This is
+   pricing *intent*; no "free forever", limit, or price claim is approved for
+   customer-facing copy until the commercial gate closes, entitlements are enforced
+   server-side in the target, and a downgrade still preserves authorized read and export
+   of records the operator already recorded.
 
 ---
 
@@ -78,7 +93,7 @@ Collection Book provides:
 
 | Feature / Dimension | Traditional Paper Register | Generic Khata Apps *(Khatabook, OkCredit)* | Legacy Cable SaaS *(BixApp, Mobiezy)* | **Collection Book** |
 | :--- | :--- | :--- | :--- | :--- |
-| **Pricing** | ₹150 notebook cost | Free (ad/loan monetization) | ₹2,500 – ₹6,000 / year (mandatory upfront) | **Free (100 subs) / ₹1,499/yr Starter** |
+| **Pricing** | ₹150 notebook cost | Free (ad/loan monetization) | ₹2,500 – ₹6,000 / year (mandatory upfront) | **Free (100 subs) / ₹1,499/yr Starter** *(our figures are provisional pricing intent, not approved copy, until Gate 13 closes)* |
 | **Offline Reliability** | 100% offline (paper) | Requires internet for sync/reload | Degraded / hangs on poor 2G/4G | **100% Offline-First SQLite Engine** |
 | **Subscription Cycles** | Manual cross-checking | Single-entry debtor credit only | Supported | **Native 12-Month Matrix & Billing Cycles** |
 | **VC / STB Card Search** | Impossible (leaf through pages) | Not supported | Supported | **Instant Search by Name, Alias, or VC #** |
@@ -110,7 +125,7 @@ flowchart TD
     subgraph P1["Persona 1: The Micro LCO (100 - 300 Subs)"]
         A1["Owner does collections personally"]
         A2["Core Need: Simple offline book, ₹0 cost"]
-        A3["Monetization: Free tier hook (up to 100 subs)"]
+        A3["Monetization: Free entry path (cap provisional, Gate 13)"]
     end
 
     subgraph P2["Persona 2: The Established LCO (300 - 800 Subs)"]
@@ -126,11 +141,16 @@ flowchart TD
     end
 ```
 
+*Persona monetization labels above are illustrative research, not approved copy. The
+affordable free entry path is retained, but its limits and the surrounding prices stay
+provisional until the commercial gate (Gate 13) closes; see
+[`docs/plans/cloud-authoritative-offline-first-saas/plan.md`](docs/plans/cloud-authoritative-offline-first-saas/plan.md) §9.1 and §11 Gate 13.*
+
 #### Persona 1: "Ramesh Bhai" – The Micro LCO
 * **Profile**: Operates 150 to 250 cable TV connections in a semi-urban colony or large village. Works with Siti or GTPL.
 * **Current State**: Uses a ₹150 paper notebook. Collects money door-to-door himself on a motorcycle.
 * **Key Pain**: Loses the diary or gets it soaked in monsoon rain; forgets who paid partial dues.
-* **Adoption Trigger**: Downloads free app from Google Play Store; replaces paper register immediately without spending money.
+* **Adoption Trigger**: Downloads the app from the Google Play Store; replaces paper register immediately without spending money. *(Describes the state after the public release at Gate 15; the Play listing does not exist before then, and any free-path claim in it is provisional until Gate 13 closes.)*
 
 #### Persona 2: "Suresh Patel" – The Established LCO
 * **Profile**: 400 to 700 connections across 4 neighborhoods. Employs 1 line boy for field collection.
@@ -467,6 +487,18 @@ only in git history and in the superseded sections of earlier revisions.
 
 ## 7. Pricing, Packaging & Unit Economics
 
+> **Provisional until the commercial gate closes.** The tiers, prices, and limits below are
+> planning intent, not a settled or communicated offer. The direction **retains an
+> affordable free entry path**, but whether the free path exists at what boundary, what it
+> includes, any subscriber, device, or seat limit, and the paid prices around it are
+> decided with evidence at the commercial gate (Gate 13 in the SaaS plan). A downgrade
+> must still leave authorized members able to **read and export the records they already
+> have** (SaaS plan §1.2); no plan change may lock, hide, or delete recorded money. Until
+> then, **no customer-facing copy may promise "free forever", "no limits", state a price,
+> or name a specific subscriber cap**; the `findUnsupportedClaims` scanner is the
+> enforcement point. "₹0 Forever" and the tier table below record the current pricing
+> *intent* and are **not** approved public claims.
+
 ### 7.1 Tier Packaging Matrix
 
 | Tier Name | Target Operator | Price Point | Subscriber Limit | Devices & Logins | Key Capabilities |
@@ -474,6 +506,14 @@ only in git history and in the superseded sections of earlier revisions.
 | **Free Tier** *(Micro LCO)* | Village / Small Colony | **₹0 Forever** | Up to 100 Connections | 1 Device | 100% Offline SQLite, Search, Manual Payment Log |
 | **Starter Tier** *(Apna Operator)* | Established Cable LCO | **₹199 / month** or **₹1,499 / year** | Up to 500 Connections | 1 Owner + 1 Line Boy | 1-Tap WhatsApp Receipts, Automated Cloud Backup, UPI Links |
 | **Pro Tier** *(Super Operator)* | Hybrid Cable + FTTH ISP | **₹349 / month** or **₹2,499 / year** | Up to 2,000 Connections | Unlimited Line Boys | MSO Bulk Excel Import, Multi-User Roles, P&L & Aging Reports |
+
+> **Every cell above is provisional until the commercial gate (Gate 13) closes.** The tier
+> names, all prices, and all subscriber, device, and seat limits are planning intent, not
+> an approved offer and not approved copy; the free path is *retained* but its boundary is
+> undecided. Nothing in this table may be published, quoted, or implied in the landing
+> page, the Play listing, a receipt, or a script before that gate, and a downgrade must
+> still leave authorized members able to **read and export the records they already have**
+> (SaaS plan §1.2).
 
 ### 7.2 Economics at 5,000 Paying Customers
 
@@ -545,21 +585,28 @@ documentation only. Every stage from 1 onward is unstarted.**
 | **5 — Multi-device and multi-user** | Additional devices, collector role in daily operation, role management, revocation, revoked-device cache treatment | Not started |
 | **6 — Migration of existing local ledgers** | Claim an existing device ledger into an organization with a verified reconciliation report | Not started |
 | **7 — Cloud authority enforced** | Device state is unambiguously a cache; unsynced and quarantined indicators; server-authoritative reports and exports | Not started |
-| **8 — Commercial, compliance, and launch** | Server-side entitlements, checkout, privacy/data-safety copy updated in the same release, local-cache security review, DR drill, legal sign-off | Not started |
+| **8 — Commercial, compliance, and launch** | Server-side entitlements, checkout, launch security review, DR drill, legal sign-off, and the privacy/data-safety copy **prepared, reviewed, and ready to publish** — publication is a Gate 15 action, not a Stage 8 one | Not started |
 
 **The backend vendor decision (Gate 1) is still open.** It blocks **provider-dependent
 work only** — Stages 2, 3, and 4, the server-side schema, the sync transport, and audit
 storage. It does **not** block Stage 1 local foundations, the conflict/sync state
 machines behind a test double, or the cross-tenant test suites written against a
 contract. Client-side work already shipped or planned under the existing GTM plans
-(WhatsApp receipts, i18n, MSO import, clear-due helper, Play release) continues
-unchanged and is not gated by this roadmap.
+(WhatsApp receipts, i18n, MSO import, clear-due helper) continues
+unchanged and is not gated by this roadmap. The **Play release itself is gated**: it is
+the public release gate, not ungated background work.
 
-**Sequencing relative to the Play launch.** Per
-[`docs/plans/play-launch-then-cloud-direction/plan.md`](docs/plans/play-launch-then-cloud-direction/plan.md),
-the current local-only app launches on Google Play as a free app first. Stage 1 ships as
-the **first post-launch update**, and the Gate 1 vendor decision runs in parallel. Paid
-tiers in §7 depend on Stage 8 and are not offered at the Play launch.
+**Sequencing relative to the Play launch (canonical, 2026-09-30).** The public Google
+Play release is **Gate 15**, and it runs **after** Stages 0–8 and Gates 1–14; it is not a
+Stage 8 action. Stage 8 prepares and reviews the launch material and Gate 15 publishes it.
+**Stage 1 (local data foundations) is the local counterpart of Gates 2–5** — global id
+strategy, money representation, local sync foundations, and append-only financial history
+— and Stage 1 is vendor-neutral, so it runs **before** the public launch while the Gate 1
+vendor decision runs in parallel. The local-only app is **not** published publicly first.
+The public release carries the Play data-safety and listing changes that
+describe the shipped cloud product, and Play mechanics and manual device checks remain
+pending. The free entry path and tier pricing in §7 stay provisional until the commercial
+gate (Gate 13) closes, and no paid tier is offered at launch without that decision.
 
 ---
 
@@ -573,10 +620,17 @@ tiers in §7 depend on Stage 8 and are not offered at the Play launch.
    * Full offline capability: app never blocks user actions with a loading spinner due to lack of network.
 3. **Data Sovereignty (scoped by role)**:
    * An **authorized Owner or Manager** retains 100% ownership of their data and can
-     export an unencrypted SQLite `.db` file at any time without paying a fee. *(Current
-     and preserved in the target: the local file becomes a cache export. Whether the
-     `.db` remains a formally promised artifact in the target state is an open decision
-     in the SaaS plan.)*
+     export their organization's records at any time without paying a fee, **including
+     after a downgrade**. The **current** artifact is an unencrypted SQLite `.db` file.
+     *(In the target state the local file becomes a cache export, so **the promised
+     export format and scope are decision-dependent**, not fixed by this document: whether
+     an unencrypted `.db` remains the promised artifact, and what default scope, format,
+     and passphrase options the secure export policy defines, are **open decisions** in the
+     SaaS plan (its §8.1.1 and §13). What is **not** decision-dependent is the guarantee
+     itself: an authorized Owner or Manager can read and export the records they already
+     have, free of charge, including after a plan downgrade. Any export must declare
+     pending and quarantined mutations, and destructive export/share is blocked while
+     unsynced entries exist.)*
    * A **Collector** holds no standing export entitlement. If the collector's role is
      revoked, the server stops authorizing their export — but the **local cache on that
      device is a separate, open question** (what a revoked device may still reach, and

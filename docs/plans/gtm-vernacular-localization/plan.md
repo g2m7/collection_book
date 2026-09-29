@@ -1,5 +1,24 @@
 # Plan: Vernacular Localization Engine (i18n)
 
+> **Copy-safety note (added by the cloud-authoritative SaaS pivot).** Localization makes
+> every claim reachable in five languages, so this plan is bound by the same copy gates
+> as the rest of the product. Two classes of localized string are **blocked** until the
+> matching gate closes:
+> 1. **Any price, tier, cap, or "free" claim** — a named price, a paid/free tier name, a
+>    subscriber cap, or a "free forever" promise. The commercial gate (Gate 13) has not
+>    decided the free entry path's boundary or any price; see
+>    [`../cloud-authoritative-offline-first-saas/plan.md`](../cloud-authoritative-offline-first-saas/plan.md)
+>    §11. The shared `findUnsupportedClaims` rules currently guard the Play metadata
+>    and landing/privacy copy in tests, **not** `assets/i18n/` or Dart source. Review
+>    catalog strings manually before shipping, or add a dedicated catalog check.
+> 2. **Any cloud capability claim** — a cloud-backup, cloud-sync, or account string. The
+>    app has **no cloud account, no sync, and no cloud backup**; the shipped app is
+>    local-only, so a localized cloud string would be untruthful copy.
+>
+> `vocabulary-matrix.md` still carries historical examples of both classes. They are
+> **proposed, not shipped**, and are quarantined in that file; the shipped catalogs in
+> `assets/i18n/` are the only implemented copy.
+
 ## 1. Overview & Objective
 English-only B2B software fails catastrophically in India's Tier 2, Tier 3, and rural cable belts. More than $70\%$ of local cable operators in Maharashtra, UP, Bihar, Bengal, and Tamil Nadu maintain their paper registers (*bahi-khata*) in regional vernacular scripts.
 
@@ -26,6 +45,11 @@ This plan details the technical architecture for:
 
 ### Out of Scope
 - Dynamic speech-to-text voice entry (deferred to future roadmap).
+- **Localizing paywall, upgrade, price, cap, or cloud-capability strings.** No such
+  string is implemented, and none may be added to a catalog before Gate 13 decides the
+  offer and before the corresponding cloud capability actually ships. A localized
+  "Upgrade (₹1,499/yr)" or "Cloud Backup" string must not be added to `assets/i18n/`
+  on the strength of `vocabulary-matrix.md` §2 or of the `backup_cloud` key.
 
 ---
 
@@ -67,7 +91,9 @@ Text(context.tr('balance_due', {'amount': '₹350'}))
 - [x] **Phase 1: Translation Assets & Catalog**
   - [x] Create `assets/i18n/` directory.
   - [x] Add JSON translation catalogs: `en.json`, `hi.json`, `mr.json`, `bn.json`, `ta.json`.
-  - [x] Populate translations according to `vocabulary-matrix.md`.
+  - [x] Populate translations according to `vocabulary-matrix.md` (the **operational**
+        rows only; the matrix's paywall/CTA and `backup_cloud` rows are blocked and are
+        **not** in the catalogs).
   - [x] Register asset paths in `pubspec.yaml`.
 
 - [x] **Phase 2: AppLanguageService & Extension**
@@ -76,7 +102,7 @@ Text(context.tr('balance_due', {'amount': '₹350'}))
   - [x] Store chosen language code in `SharedPreferences`.
 
 - [x] **Phase 3: UI Integration**
-  - [x] Add language selector dialog / tile in [`lib/screens/settings_screen.dart`](lib/screens/settings_screen.dart).
+  - [x] Add language selector dialog / tile in [`lib/screens/settings_screen.dart`](../../../lib/screens/settings_screen.dart).
   - [x] Localize home, subscriber list/detail, add/edit, payment recording, settings/import, and shared action/dialog surfaces.
   - [x] Keep the current route mounted during live language changes and use flexible detail labels for longer translations.
   - [x] Align generated WhatsApp receipt templates, service labels, and billing months with the selected app language.

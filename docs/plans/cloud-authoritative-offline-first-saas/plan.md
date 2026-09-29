@@ -1,13 +1,32 @@
 # Plan: Cloud-Authoritative, Offline-First Multi-Tenant SaaS
 
-**Status:** Approved as the target product direction; **not implemented**. No part of
+**Status:** Approved as the **target product direction** and, since 2026-09-30, as the
+**canonical overall project direction and staged rollout**; **not implemented**. No part of
 this plan is in the shipped application. Every checklist item below is unchecked, and
 no vendor, provider, or backend has been selected.
 
-**Sequencing:** Per the overall direction in
-[`../play-launch-then-cloud-direction/plan.md`](../play-launch-then-cloud-direction/plan.md),
-the current local-only app launches on Google Play first, and Stage 1 of this plan ships
-as the first post-launch update. Gate 1 runs in parallel.
+**Sequencing (canonical, 2026-09-30):** this is now the top-level ordering rule for the
+whole repository. The direction is **SaaS-first**:
+
+- Cloud **Stage 1 (local data foundations) happens before the public Google Play
+  launch**, not as a post-launch update.
+- **Gate 1 (backend vendor decision) runs in parallel** with Stage 1 and the vendor-neutral
+  decision work.
+- **Stages 0–8 and Gates 1–14 close before the public Play release.** Gate 15 *is* the
+  public Google Play release, so it is the last step, not one of the gates it waits for.
+  The product is not published as a local-only app and migrated later.
+- Play mechanics — signing, the app-signing asset-links fingerprint, the listing, and
+  the data-safety form — remain **pending** and are performed as part of the public
+  release gate (Gate 15), not before it. **Stage 8 prepares and reviews that material;
+  Gate 15 publishes it.** The public release is therefore after Stage 8, not part of it.
+
+**Superseded direction:** the earlier "launch the local-only app on Google Play first"
+decision in
+[`../play-launch-then-cloud-direction/plan.md`](../play-launch-then-cloud-direction/plan.md)
+is **SUPERSEDED** and retained as history only. It was reversed because publishing a
+local-only app first would create an installed base with no account, no organization, no
+cloud ledger, and no settled pricing, and a later **forced** account, pricing, and data
+migration would burden the operators the product exists to serve.
 
 **Supersedes the target-state claims in:** `product.md` §4/§6/§9 and
 `docs/05-product-architecture-and-roadmap.md` §3/§4, which described a
@@ -42,7 +61,11 @@ any backend work starts.
   metadata) to imply the cloud already exists. The shipped app is local-only and its
   copy must stay truthful until cloud code is merged and deployed.
 - Replacing the existing local-first product. The current app remains the product until
-  the staged rollout in §9 is complete.
+  the staged rollout in §9 is complete. This constrains the **public** product and its
+  copy; it does not forbid **internal builds, Play private-track or closed-test builds,
+  and invited-tester builds**, which stay available for operator testing and for the
+  Gate 13 evidence in §11 — with the §9.2 data-safety precondition applying to any such
+  build that puts an external operator's real money behind it.
 - Remote lockout or destruction of operator data. The data-export guarantee below is scoped to **authorized members of the organization**; it is not a promise to a revoked member. A revoked device's cached-data treatment is an **open decision** (§13) and must be addressed before launch.
 
 ### 1.2 Operator Data Access Guarantee (scoped)
@@ -438,7 +461,8 @@ vendor decision rather than as an afterthought bolted onto it.
   ledger changes what is stored, where, and why, and the `/privacy` page, the Play
   Store data-safety disclosure, and any in-app messaging must be updated **as part of
   the implementation**, reviewed, and only then shipped. This plan does not change that
-  copy now.
+  copy now. The same synchronized change is required at the public release (Gate 15);
+  see §9.1.
 - The local analytics queue's zero-PII boundary (`services/cbk-edge` telemetry) remains
   separate from ledger data. Ledger data is not analytics data and must never be emitted
   to the telemetry route.
@@ -470,7 +494,7 @@ numbers and the same states, in `product.md` §9 and
 
 | Stage | Name | State | Exit condition |
 | :--- | :--- | :--- | :--- |
-| 0 | **Documentation pivot** | **Complete (documentation only)** | This plan, `product.md`, and the architecture doc agree on current vs. target. Shipped copy unchanged. |
+| 0 | **Documentation pivot** | **Complete (documentation only)** | This plan, `product.md`, and the architecture doc agree on current vs. target. Shipped copy unchanged. Re-confirmed 2026-09-30 when the SaaS-first direction superseded the Play-first direction. |
 | 1 | **Local data foundations (vendor-neutral)** | Not started | Money moves to minor units with rounding tests; global ids, `updated_at`, `revision`, and tombstones exist **locally**; a durable outbox table exists and is written in the same transaction as user actions. **Backend-free and explicitly allowed to start before Gate 1.** |
 | 2 | **Read-only cloud projection** | Blocked on Gate 1 (vendor) | One-way, authenticated read of cloud state into the local cache. Writes stay local-only and are clearly labeled. |
 | 3 | **Identity, tenancy, and RBAC** | Blocked on Gate 1 (vendor) | Sign-in, organizations, owner/manager/collector memberships, server-side authorization, and the cross-tenant negative test suite. |
@@ -478,26 +502,113 @@ numbers and the same states, in `product.md` §9 and
 | 5 | **Multi-device and multi-user** | Not started | Additional devices, collector role in daily operation, role management, revocation, and revoked-device cache treatment. |
 | 6 | **Migration of existing local ledgers** | Not started | Onboarding flow that claims an existing local database into an organization without losing or double-counting money, with a verified reconciliation report. |
 | 7 | **Ledger cloud authority enforced** | Not started | Local device state is unambiguously a cache: unsynced indicators, server-authoritative reports, append-only financial history, export from a server-consistent snapshot. |
-| 8 | **Commercial, compliance, and launch** | Not started | Entitlements bound to server-side plan state, checkout, GST scope per the existing future-only plan, privacy and data-safety updates shipped, launch security review closed. |
+| 8 | **Commercial, compliance, and launch** | Not started | Entitlements bound to server-side plan state, checkout, GST scope per the existing future-only plan, launch security review closed, and the privacy and data-safety copy **prepared, reviewed, and ready to publish**. **Publication is not a Stage 8 action**: the reviewed copy is submitted and published by the public release itself at Gate 15, so Stage 8 prepares and reviews and Gate 15 publishes. |
 
 Rollout rules:
 
 - **Stage 1 is vendor-neutral and may begin before the vendor decision closes.** It
   changes no cloud dependency and no user-visible behavior, and getting the data model
-  right before committing ledger semantics to a provider is the point. Gates 3, 4, and 5
-  in §11 are the local counterparts of Stage 1.
+  right before committing ledger semantics to a provider is the point. **Gates 2, 3, 4,
+  and 5 in §11 are the local counterparts of Stage 1** (global id strategy, money
+  representation, local sync foundations, and append-only financial history).
 - No stage may ship while a later stage's correctness depends on an unbuilt guarantee.
 - Each stage needs its own plan under `docs/plans/<name>/plan.md`. This document
   authorizes direction, not the stage implementations.
 - Existing users on a local-only ledger keep a working local-only path until Stage 6
-  exists; no forced migration without an explicit, tested import path.
-- **Stage 1 is pinned as the first update after the Google Play launch**
-  ([`../play-launch-then-cloud-direction/plan.md`](../play-launch-then-cloud-direction/plan.md)).
-  The Play installs created before it are the legacy ledgers Stage 1 must migrate
-  locally and Stage 6 must later claim, so Stage 6 must handle ledgers from both the
-  launched schema and the post-Stage-1 schema.
+  exists; no forced migration without an explicit, tested import path. See §9.2.
+- **The public release is Gate 15, and Gate 15 runs *after* Stage 8.** It is not
+  "Stage 8 work": Stage 8 prepares and reviews the commercial, compliance, and
+  launch-readiness material, and Gate 15 is the separate, final step that publishes it
+  (listing, data-safety form, asset links, manual device checks, publish).
+- **Stage 1 precedes the public Play release** (canonical sequencing, 2026-09-30). Until
+  Stage 1 ships, the local-only schema must not be published at scale, because the
+  `REAL`-money and device-local-id blockers in §2.1 would otherwise reach every operator
+  who installs.
 - Rollback: every stage must have a documented way to return a device to a working
   local-only state without data loss.
+
+### 9.1 Public Onboarding, Entry Tier, and Unsynced Risk
+
+The first public release is the **cloud product**, so the first-run experience is
+account- and organization-first:
+
+- **Public onboarding is account/organization/cloud-first.** A new operator creates or
+  joins an **organization** and authenticates before the ledger is used as a ledger.
+  There is no public "start a local-only ledger and stay there" path that later requires
+  a forced conversion.
+- **Offline writes are preserved and are the promise.** A first run on a poor link must
+  still be able to record collections, subject to the sync contract in §5. An offline
+  write is only **an intent queued locally**; the app must never present it as a settled,
+  cloud-confirmed fact.
+- **The offline window is an explicit, visible risk, not a hidden one.** Unsynced state
+  requires a **persistent, visible indicator**, financial figures state that they include
+  unconfirmed local entries (§7.8), and the device-loss-before-first-sync case in §5.4 is
+  communicated honestly. No copy may imply that unsynced cash is already safe.
+- **The free entry path is retained, but its shape is not yet decided.** The direction
+  is an **affordable free entry path** for the public cloud product — not a promise of
+  permanent or unlimited use. What it includes, and any subscriber, device, or seat
+  limit, and the paid prices around it, are **commercial decisions that Gate 13 must
+  close with evidence** (§11). Before that:
+  - No copy may promise "free forever", "no limits", a price, or a specific subscriber
+    cap, and no copy may imply that the free path is permanent.
+  - A **downgrade must not cost an operator their history.** After a downgrade, the
+    authorized Owner or Manager keeps read and export access to the records they already
+    recorded (§1.2); existing money must never be locked, hidden, or deleted by a plan
+    change, and the claim path in §9.2 stays available at the lower tier.
+  - The existing `findUnsupportedClaims` scanner in `packages/contracts/` and the Play
+    metadata claim scanner remain the enforcement point, and are extended when a real tier
+    is decided.
+  - Entitlements are **server-side** (§6.1, Stage 8). A device-local license or cap from
+    an earlier GTM plan is a transitional placeholder, never the public model.
+- **Customer-facing copy follows the implementation.** The landing page, `/privacy`, the
+  Play listing, and the Play **data-safety form** describe a local-only app today and
+  must be **updated and shipped in the same release** that makes a cloud capability true.
+  For the Play data-safety disclosure specifically, the review is **prepared and closed
+  at Gate 11** and the reviewed form is **submitted and published as part of the release
+  at Gate 15** — preparation is what Gate 11 requires, publication is what Gate 15
+  executes, so neither gate waits on the other.
+
+### 9.2 Existing Local, Test, and Sideload Data: Optional Verified Claim
+
+Ledgers already exist outside the public product: developer and test devices, sideloaded
+builds, and any operator who received a direct APK. They need a way in, and must not be
+coerced into paying for their own history.
+
+- **The claim/import path is optional.** An existing local database may be claimed into an
+  organization (Stage 6 / Gate 12) or may be left alone. There is **no forced migration**
+  and **no coercive paid migration**: a ledger already recorded is not leverage to force a
+  purchase, and no claim path may delete, hide, or degrade the local data first.
+- **The path is verified.** A claim produces a **reconciliation report** — counts and
+  monetary totals per service mode, month, and area — that the operator can compare
+  before accepting.
+- **No data loss and no double counting.** Claiming is **idempotent per source ledger**,
+  must not duplicate payments on retry or re-claim, and must keep the original local file
+  until the claim is proven. Money conversion from the `REAL` to minor units (Gate 3)
+  must preserve already-collected cash exactly.
+- **If the claim cannot be completed, the local-only path still works.** An operator is
+  never left unable to read or export money they already recorded because a cloud
+  onboarding step failed.
+- **Data-safety sequencing: these are prerequisites, not a Gate 14 deliverable.** Safe
+  restore (§2.1 item 5) and the off-device backup reminder must ship:
+  - **Before any real-money invited external test** — any operator outside the team
+    putting cash they actually collected behind the app, including Play private-track,
+    closed-test, and invited-tester builds (§1.1). This is a **precondition of the
+    test**, so it can never be something a later gate is merely waiting on.
+  - **Before the claim/import path opens an external-data path** for existing ledgers.
+  - **Before the public release** (Gate 15).
+  - **Gate 13 evidence is not blocked by this prerequisite.** Synthetic fixtures,
+    internal use of the team's own data, internal interviews, and internal testing may
+    inform Gate 13 at any time. Only **real-money invited external** evidence waits for
+    the two fixes, and the fixes do not wait for Gate 13.
+  - **Gate 14 remains the final verification pass**, not the first delivery point: it
+    re-verifies on a real device that the already-shipped safe restore and backup
+    reminder hold. Neither fix is complete today.
+- **Current risk, recorded honestly.** The shipped app already exposes both edges:
+  **Share backup** moves a database copy off the device, and restore replaces the live
+  ledger with a picked file that is not validated first. Until the fixes ship, sharing
+  and restoring a backup on the current build is unsafe for an operator's real data.
+  That risk is open and is not closed by this plan, by a private-track build, or by
+  deferring the public release.
 
 ---
 
@@ -564,24 +675,81 @@ exist, per existing repository testing guidance.
 - [ ] **Gate 10 — Backups and DR.** PITR configured, restore drill executed, RPO/RTO
       written down.
 - [ ] **Gate 11 — Privacy, compliance, and local-cache security review.** Updated
-      `/privacy`, Play data-safety disclosure, consent/retention/deletion handling, the
+      `/privacy`, the **reviewed and ready-to-submit** Play data-safety disclosure,
+      consent/retention/deletion handling, the
       §8.1.1 local-cache security decisions (secure token storage, cache-encryption
       threat model, app lock and recents, secure export policy, revoked-device cache
-      treatment), and Indian legal review.
+      treatment), and Indian legal review. The reviewed data-safety form is **submitted
+      and published as part of the release at Gate 15**; Gate 11 requires the review to
+      be complete, not the form to be live.
 - [ ] **Gate 12 — Migration and rollout.** Claim-an-existing-ledger flow with a verified
       reconciliation report, staged rollout, and per-stage rollback.
 - [ ] **Gate 13 — Commercial binding.** Entitlements bound to server-side plan state;
-      reconcile with `docs/plans/gtm-freemium-paywall-licensing/` and
-      `docs/plans/gtm-upi-checkout-edge-pipeline/`.
+      the **retained affordable free entry path** and its boundaries, limits, and the
+      paid prices around it decided from evidence; the **read/export-after-downgrade
+      guarantee** (§1.2, §9.1) proven on a real device; reconcile with
+      `docs/plans/gtm-freemium-paywall-licensing/` and
+      `docs/plans/gtm-upi-checkout-edge-pipeline/`. **Acceptable evidence inputs are
+      pre-launch:** structured operator interviews, support/WhatsApp conversations, and
+      usage by invited operators — the last either on **synthetic or the team's own
+      data**, which needs no further precondition, or on an operator's **real collected
+      money**, which may not happen until safe restore and the off-device backup
+      reminder have shipped (§9.2). An outbound
+      scraping campaign is **not** required and is **not** authorized as a Gate 13 input —
+      the outbound CLI plan stays deferred (§12). Until this gate closes, no copy may
+      promise "free forever", "no limits", a price, or a specific subscriber cap, and no
+      copy may state or imply a tier that has not been decided.
 - [ ] **Gate 14 — Launch gate.** Every gate above closed with evidence; sync proven
-      offline-first under a real network outage; DR drill green; legal sign-off.
+      offline-first under a real network outage; DR drill green; legal sign-off; safe
+      restore and the off-device backup reminder **re-verified on a real device** — they
+      ship before any real-money invited external test (§9.2), so this is a final
+      verification and not their first delivery; the optional verified
+      claim path for existing local/test/sideload ledgers proven with no data loss and no
+      double counting.
+- [ ] **Gate 15 — Public Google Play release.** The public Play release is **after**
+      Gates 1–14. It is the last step, and it remains entirely **pending**. Nothing below
+      is done:
+  - Upload keystore and ignored `android/key.properties` created, with the key and
+    passwords backed up in two secure places; Play App Signing enabled.
+  - Signed release AAB built with the real signing configuration and verified under
+    15 MB; the debug key is never used for a release artifact.
+  - Play Console listing, content rating, privacy URL (`https://cbk.sarbaa.com/privacy`),
+    and the **Gate 11 data-safety form submitted and published**, so that the listing,
+    privacy page, and data-safety disclosure describe the shipped **cloud** product, not
+    a local-only app.
+  - Play app-signing SHA-256 recorded as `ANDROID_SHA256_CERT_FINGERPRINT`, the Worker
+    deployed, and `/.well-known/assetlinks.json`, `/r/{code}`, and `/import` verified on a
+    **Play-installed, signed** build.
+  - **Native-speaker review** of the `hi-IN`, `mr-IN`, `bn-IN`, and `ta-IN` listings; the
+    1080x1920 vernacular screenshots produced; any closed-testing requirement Google
+    applies to the developer account completed.
+  - `PLAY_STORE_URL` set on the VPS to the HTTPS `play.google.com/store/apps/details`
+    listing for `com.sarbaa.cbk`, and the landing page's download call to action verified
+    against it.
+  - **Manual real-device checks** completed and recorded with device, Android version,
+    and result: install on a low-end device, app-link and referral routing, receipt
+    sharing, sync under a real network outage, and the unsynced-risk indicator.
+  - Publish to production, then a post-release smoke check on a Play-installed build.
+  - Mechanics and evidence: see
+    [`../gtm-android-release-aso-pipeline/plan.md`](../gtm-android-release-aso-pipeline/plan.md)
+    and the historical mechanics in
+    [`../play-launch-then-cloud-direction/plan.md`](../play-launch-then-cloud-direction/plan.md) §3
+    and §7.
 
 ### Explicit Launch Gates
 
-The product must not be marketed, listed, or described as a cloud/sync/multi-user
-product until **all** of the following hold:
+Two separate prohibitions apply, and both are in force now:
 
-1. Gate 1 through Gate 13 are closed with recorded evidence. (Gates 2–5 are vendor-neutral
+- The product must not be marketed, listed, or described as a cloud/sync/multi-user
+  product until **all** of the following hold.
+- The **local-only app must not be published publicly on Google Play** before those same
+  gates hold. Publishing it first is what created the migration burden that reversed the
+  earlier direction. **Internal builds, Play private-track and closed-test builds, and
+  invited-tester builds are allowed** before then, and their data needs the optional
+  verified claim path in §9.2 — including its data-safety precondition, which must be
+  satisfied before an external operator's real money goes into such a build.
+
+1. Gates 1 through 14 are closed with recorded evidence. (Gates 2–5 are vendor-neutral
    and are not waiting on Gate 1.)
 2. Sync is proven under a real offline/online cycle on a real device, including
    process death mid-flush and a long-offline backlog.
@@ -590,11 +758,20 @@ product until **all** of the following hold:
    timezone.
 4. Cross-tenant negative tests pass.
 5. Backup restore drill succeeds within the written RPO/RTO.
-6. Privacy, data-safety, local-cache security, and legal review are complete and shipped.
+6. Privacy, data-safety, local-cache security, and legal review are **complete and
+   reviewed**. The reviewed Play data-safety disclosure and privacy copy are then
+   **published in the same release** that makes the capability true, which is Gate 15 —
+   review at Gate 11, publication at Gate 15, so neither gate blocks the other.
 7. Permanent rejection, quarantine, and blocked reset/export/restore while unsynced are
    proven on a real device, including the device-loss-before-first-sync case (§5.4).
 8. Customer-facing copy is updated **in the same release** that makes the capability
    true. Copy must never lead the implementation.
+9. Safe restore and the off-device backup reminder are shipped (§9.2) — they ship before
+   any real-money invited external test, so no later gate has to be waited on before such
+   a test happens, and Gate 14 is where they are finally re-verified on a real device —
+   and the optional verified claim path for existing local, test, and sideload ledgers
+   is proven with no data loss and no double counting. The public Play release
+   (Gate 15) is the **last** step, not an early one.
 
 ---
 
@@ -604,13 +781,15 @@ Existing plans that this plan interacts with, and what they now depend on **from
 
 | Plan | Relationship |
 | :--- | :--- |
-| `docs/plans/play-launch-then-cloud-direction/` | Overall direction. Sets the Play launch of the local-only app ahead of this plan and pins Stage 1 as the first post-launch update. |
+| `docs/plans/play-launch-then-cloud-direction/` | **SUPERSEDED (2026-09-30).** Its Play-first ordering, §5 priority order, §3.6 pin, and §7 checklist are historical only. Its still-valid release mechanics (signing custody, app-signing asset-links fingerprint, copy never leading implementation, no unearned free/cap claims) and its data-safety findings remain required and are carried by §9.1, §9.2, and Gate 15 of this plan. Its §3.3 "the launch is free" claim is superseded: the free entry path is retained but its shape is decided at Gate 13 (§9.1). |
 | `docs/plans/gtm-freemium-paywall-licensing/` | Its offline Ed25519 license token and local 100-subscriber cap assume device-local authority. Entitlement enforcement must move to server-side plan state once Gate 13 closes. |
 | `docs/plans/gtm-upi-checkout-edge-pipeline/` | Its Convex plan mutation depends on Gate 1. The edge webhook seam is reusable; the ledger backend is not yet decided. |
 | `docs/plans/india-gst-billing-and-invoicing/` | Already records that money is `REAL`/`double` and that payment rows are editable. Both become launch-relevant under Gate 3 and Gate 5. |
 | `docs/plans/gtm-acquisition-telemetry-funnel/` | Stays a pseudonymous, no-ledger-data channel. Must keep that boundary when the ledger backend lands. |
 | `docs/plans/monorepo-cbk-edge/` and `docs/plans/cbk-vps-landing-launch/` | Provide the existing edge and landing surface. They are not the ledger backend, and their shipped copy must stay truthful to a local-only app. |
 | `docs/04-pricing-and-5k-customer-economics.md` | Its cost model and margin are expressed against a **provisional Convex + Cloudflare assumption**. It shares the working total and margin used in `product.md` §7.2 and must be re-derived once Gate 1 closes. |
+| `docs/plans/gtm-android-release-aso-pipeline/` | Carries the Play release mechanics, which now run at Gate 15 **after** the cloud stages. Its old "priority 2 in the Play-first direction" framing is superseded. |
+| `docs/plans/gtm-outbound-scraping-campaign-cli/` | Outbound campaigns and paid acquisition stay deferred. They now wait for the cloud stages and Gates 1–14, and the public release, rather than for a post-launch Stage 1. Its output is **not** a required or authorized evidence source for Gate 13, which is decided from pre-launch operator interviews and invited-tester usage, subject to the §9.2 data-safety precondition whenever that usage puts an external operator's real money behind it. |
 | `AGENTS.md` | Repository rules are unchanged. This plan does not authorize implicit architecture expansion; Gate 1 is the explicit decision point for provider-dependent work. |
 
 ---
@@ -645,5 +824,10 @@ Existing plans that this plan interacts with, and what they now depend on **from
 - It does not select a backend vendor.
 - It does not claim the offline window is risk-free. Device loss before first sync is an
   accepted residual risk (§5.4).
-- It does not change shipped landing, privacy, or Play Store copy.
-- It does not mark any checkbox in any other plan complete.
+- It does not change shipped landing, privacy, or Play Store copy, which stays truthful
+  to the local-only app until the matching release ships (§9.1).
+- It does not mark any checkbox in any other plan complete, and it does not mark the
+  data-safety fixes, Play mechanics, signing, or manual device checks complete.
+- It does not decide the free entry path's boundaries, any cap, or pricing; the
+  affordable free entry path is retained but those wait for Gate 13, and authorized
+  read/export of already-recorded data must survive a downgrade (§1.2).

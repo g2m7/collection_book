@@ -2,6 +2,12 @@
 
 *Synthesized using the Corey Haines Customer Research Framework (`customer-research/SKILL.md`).*
 
+> **Note on pricing and free-tier hooks.** The prices, caps, and "free forever" hooks in
+> this document are research/interview illustrations, not approved product copy. The
+> affordable **free entry path is retained**, but its limits and the surrounding prices
+> stay **provisional** until the commercial gate (Gate 13) closes. See
+> [`plans/cloud-authoritative-offline-first-saas/plan.md`](plans/cloud-authoritative-offline-first-saas/plan.md) §9.1 and §11 Gate 13.
+
 ---
 
 ## 1. Voice of Customer (VOC) & Operational Reality
@@ -80,19 +86,19 @@ flowchart TD
     subgraph P1["Persona 1: The Micro LCO (100 - 300 Subs)"]
         A1["Owner does collections personally"]
         A2["Core Need: Simple offline book, ₹0 cost"]
-        A3["Monetization: Free tier hook"]
+        A3["Monetization: free entry path (provisional, Gate 13)"]
     end
 
     subgraph P2["Persona 2: The Established LCO (300 - 800 Subs)"]
         B1["Employs 1 collection boy"]
         B2["Core Need: WhatsApp receipts, cloud backup"]
-        B3["Monetization: ₹1,499/year Starter Plan"]
+        B3["Monetization: Starter Plan (price provisional, Gate 13)"]
     end
 
     subgraph P3["Persona 3: The Hybrid LCO + FTTH Operator (800 - 2,000+ Subs)"]
         C1["Multiple collection boys & area routes"]
         C2["Core Need: Dual TV/Fiber mode, MSO Excel import, multi-user permissions"]
-        C3["Monetization: ₹2,499/year Pro Plan"]
+        C3["Monetization: Pro Plan (price provisional, Gate 13)"]
     end
 ```
 
@@ -100,15 +106,15 @@ flowchart TD
 * **Profile**: Operates 150 to 250 cable TV connections in a semi-urban colony or large village. Works directly with Siti or GTPL.
 * **Daily Routine**: Fixes cable cuts in the morning; visits houses between 5 PM and 8 PM on a motorcycle.
 * **Device**: ₹8,000 – ₹12,000 Android smartphone (Realme, Redmi).
-* **Software Appetite**: Will not pay initially. Hook him with the **100% Free Forever Tier (up to 100 subs)** and instant offline speed. Once hooked, he upgrades when crossing 100 subscribers or wanting automated backup.
+* **Software Appetite**: Will not pay initially. Hook him with the **affordable free entry path** (cap provisional until Gate 13; never ship "free forever" or a named cap) and instant offline speed. Once hooked, he upgrades when he outgrows the free boundary or wanting automated backup.
 
 ### Persona 2: "Suresh" – The Hybrid Operator (Sweet Spot for 5k Goal)
 * **Profile**: 500 connections (350 Cable TV + 150 FTTH Fiber). Employs 1 collection boy.
 * **Monthly Revenue**: ₹1,20,000 – ₹1,80,000.
 * **Key Frustration**: "My collection boy comes back with ₹14,000 cash and 15 scribbled names on a piece of paper. It takes me 2 hours every night to match it."
-* **Willingness to Pay**: ₹1,499/year is an immediate impulse buy. If the app saves him 1 lost subscriber bill per month, it has paid for itself 3x over.
+* **Willingness to Pay**: ₹1,499/year is an immediate impulse buy. If the app saves him 1 lost subscriber bill per month, it has paid for itself 3x over. *(Provisional research figure, not a decided price — Gate 13.)*
 
 ### Persona 3: "Vikram" – The Multi-Area Network Owner
 * **Profile**: 1,200 to 2,000 subscribers spread across 4 distinct neighborhoods/wards. Has 2–3 collection boys.
 * **Key Frustration**: Staff accountability. Wants collection boys to log payments on the spot without giving them permission to delete subscribers or alter past payment records.
-* **Willingness to Pay**: ₹2,499/year (Pro Plan) for multi-staff access and automated monthly reports.
+* **Willingness to Pay**: ₹2,499/year (Pro Plan) for multi-staff access and automated monthly reports. *(Provisional research figure, not a decided price — Gate 13.)*

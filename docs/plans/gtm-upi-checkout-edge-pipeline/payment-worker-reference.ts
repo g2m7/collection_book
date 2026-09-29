@@ -5,20 +5,33 @@
  * Execution:
  *   bun run payment-worker-reference.ts
  *
- * SUPERSESSION WARNING (added by the cloud-authoritative SaaS pivot):
- *   This is a PROVISIONAL design reference, not deployed code. The edge gateway and
- *   Razorpay HMAC webhook seam remain valid. The `CONVEX_URL` / `CONVEX_ADMIN_KEY`
- *   bindings and every "Convex" name below are PLACEHOLDERS: no backend vendor is
- *   selected or approved. The ledger and plan-state backend is owned by
- *   docs/plans/cloud-authoritative-offline-first-saas/plan.md (Gate 1 vendor decision,
- *   Gate 13 commercial binding). Rename and re-shape once that gate closes. Do not copy
- *   these vendor-specific bindings into services/cbk-edge.
+ * NON-NORMATIVE — BLOCKED BY GATE 1 (added by the cloud-authoritative SaaS pivot):
+ *   This is a PROVISIONAL design reference, not deployed code, not an implementation
+ *   contract, and not selectable against a real backend. The edge gateway and the
+ *   Razorpay HMAC webhook seam remain valid and provider-neutral.
+ *
+ *   The `CONVEX_URL` / `CONVEX_ADMIN_KEY` bindings, the `organizations:upgradePlan
+ *   FromPayment` mutation, and every "Convex" name below are NON-NORMATIVE
+ *   PLACEHOLDERS: no backend vendor is selected or approved. That decision is Gate 1 of
+ *   docs/plans/cloud-authoritative-offline-first-saas/plan.md (§11) and it is still
+ *   open. Do not implement this, do not copy these vendor-specific bindings into
+ *   services/cbk-edge, and do not treat the mutation path below as an API contract.
+ *
+ *   Do not close the gap by inventing a generic or vendor-neutral "mutate the plan"
+ *   endpoint here. Until the vendor is selected, the post-payment plan-state write is
+ *   undefined on purpose; re-derive it from the recorded Gate 1 decision.
+ *
+ *   The hardcoded tier prices below are also undecided placeholders: the commercial
+ *   gate (Gate 13, §11) decides any price, and no price, tier, or "free" wording may
+ *   reach customer-facing copy before then.
  */
 
 interface Env {
   RAZORPAY_KEY_ID: string;
   RAZORPAY_KEY_SECRET: string;
   RAZORPAY_WEBHOOK_SECRET: string;
+  // NON-NORMATIVE placeholders: the backend vendor is unselected (Gate 1). These
+  // binding names are not a selection and not a contract.
   CONVEX_URL: string;
   CONVEX_ADMIN_KEY: string;
 }
@@ -142,7 +155,12 @@ export default {
           const payment = event.payload.payment.entity;
           const notes = payment.notes;
 
-          // Dispatch mutation to Convex backend
+          // BLOCKED BY GATE 1 — the backend vendor is unselected, so the shape of the
+          // post-payment plan-state write is undefined. The mutation call below is a
+          // NON-NORMATIVE Convex placeholder, not an API contract: do not implement it,
+          // and do not generalize it into a vendor-neutral endpoint. Re-derive it from
+          // the recorded Gate 1 decision. Entitlements themselves are server-side and
+          // are bound at the commercial gate (Gate 13).
           const convexResponse = await fetch(`${env.CONVEX_URL}/api/mutation`, {
             method: "POST",
             headers: {
@@ -163,7 +181,7 @@ export default {
           });
 
           if (!convexResponse.ok) {
-            console.error("Convex mutation failed", await convexResponse.text());
+            console.error("Plan-state update failed", await convexResponse.text());
           }
         }
 

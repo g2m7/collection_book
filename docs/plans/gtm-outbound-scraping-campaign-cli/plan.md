@@ -1,11 +1,36 @@
 # Plan: Outbound Scraping & WhatsApp Campaign Pipeline (Bun CLI)
 
-> **Direction note.** Outbound campaigns and paid acquisition at scale wait until cloud
-> Stage 1 ships as the first post-launch update, so the number of legacy local ledgers
-> stays small. See
-> [`../play-launch-then-cloud-direction/plan.md`](../play-launch-then-cloud-direction/plan.md) §3.6 and §5.
+> ## DEFERRED — DO NOT BUILD, DO NOT RUN, DO NOT REPURPOSE
+>
+> **Objective status: deferred until after the public release gate (Gate 15).** Under
+> the canonical direction in
+> [`../cloud-authoritative-offline-first-saas/plan.md`](../cloud-authoritative-offline-first-saas/plan.md)
+> §11, outbound campaigns and paid acquisition at scale wait for the cloud stages, the
+> launch gates, and the public release. The reason is specific: acquiring a large
+> install base **before** the cloud stages would recreate exactly the migration burden
+> the current direction removed — thousands of local-only ledgers that would then need a
+> forced account and data migration (§9.2). Internal builds, Play private-track and
+> closed-test builds, and invited-tester builds are the only pre-release distribution
+> this plan may ever coexist with, and this plan is not one of them.
+>
+> **Do not repurpose this pipeline as an invited-testing or research tool.** Scraping
+> operator phone numbers from public registries and messaging them unsolicited is a
+> consumer-spam and telecom-compliance activity. It is **not** an authorized way to reach
+> invited testers, gather Gate 13 evidence, recruit research participants, or seed the
+> first paying customers. Gate 13 evidence comes from structured operator interviews,
+> support/WhatsApp conversations already had with operators who opted in, and invited
+> testers who consent — never from an outbound scrape. This plan's output is **not** a
+> required or authorized input to the commercial gate.
+>
+> Nothing below is implemented, and no checklist item is complete. Revisit this plan
+> only after Gate 15 closes, and only with a fresh, explicitly approved decision.
 
 ## 1. Overview & Objective
+
+> **Quarantined objective — retained for history only.** The paragraph below records the
+> original "first 500 paying operators" objective. It is **not** an active objective, not
+> a goal to work toward now, and not authorization to run any campaign.
+
 While paid Meta Ads create an inbound install engine, the fastest route to acquiring the first 500 paying operators is **direct outbound video demonstrations sent to verified LCO phone numbers**.
 
 Public registries of cable operators and ISP license holders are maintained by:
@@ -51,6 +76,10 @@ flowchart TD
 ---
 
 ## 4. Implementation Checklist
+
+> **Every item below is DEFERRED and must stay unchecked.** Do not start this work, and
+> do not build a partial version of it, before Gate 15 closes and a fresh decision is
+> recorded. This reconciliation completes nothing here.
 
 - [ ] **Phase 1: CLI Scaffolding (Bun Runtime)**
   - [ ] Initialize `scripts/gtm/outbound-processor.ts`.
